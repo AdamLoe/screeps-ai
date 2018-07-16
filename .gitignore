@@ -1,23 +1,13 @@
-# Windows thumbnail cache files
-Thumbs.db
-ehthumbs.db
-ehthumbs_vista.db
 
-# Folder config file
-Desktop.ini
+**/node_modules/**
 
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
+.idea*
+/.idea/*
 
-# Windows Installer files
-*.cab
-*.msi
-*.msm
-*.msp
+npm-debug.log*
+npm-debug.log
+.gitattributes
 
-# Windows shortcuts
-*.lnk
+~/package-lock.json
 
-# =========================
-# Operating System Files
-# =========================
+**/package-lock.json
