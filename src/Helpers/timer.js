@@ -3,13 +3,27 @@ module.exports = () => {
 };
 
 /*
+    Worker - 16/16/16
+    Carry  - 16/32
+    Harv   - 10/5/1
+    10-30-10  3000 Energy in 50  Ticks, Can Create  8 Roads, Mv 2/t
+    15-15-20  3000 Energy in 100 Ticks, Can Create 16 Roads,
+    Need
+    10 Work, 5 Move, 1 Carry
+        Allows Building Of Container
+
+    Once Every 3000 Ticks, all harvesters go into build mode,
     Builders should delete roads below a certain threshold
 
     Road 8.3x Efficiency Building
+         Build  - 60 Energy  - 300
+         Repair - 500 Energy - 2500
+         50,000 Ticks, .1/s  100 Energy / 300 Ticks, If 4 Creeps, Then Every 3000 Ticks
+         50,000 Ticks  .5/s
+         8.3x Efficient
     Container 25x Efficiency Building
-        Build  - 60 Energy  - 300
-        Repair - 500 Energy - 2500
-        8.3x Efficient
+
+    Towers Can Repair All Roads in
 
 
 

@@ -1,0 +1,40 @@
+{
+  "env": {
+    "commonjs": true,
+    "es6": true,
+    "screeps/screeps": true
+  },
+  "extends": "eslint:recommended",
+  "parser": "babel-eslint",
+  "parserOptions": {
+    "ecmaFeatures": {
+      "experimentalObjectRestSpread": true,
+      "jsx": true,
+      "modules": true
+    },
+    "sourceType": "module"
+  },
+  "plugins": [
+    "react", "html", "screeps"
+  ],
+  "rules": {
+    "indent": [
+      "error",
+      "tab",
+      { "SwitchCase" : 1 }
+    ],
+    "linebreak-style": [
+      "error",
+      "windows"
+    ],
+    "quotes": [
+      "error",
+      "double"
+    ],
+    "semi": [
+      "error",
+      "always"
+    ],
+    "no-console": "off"
+  }
+}

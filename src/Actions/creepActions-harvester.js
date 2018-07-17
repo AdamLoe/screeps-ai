@@ -2,27 +2,27 @@ module.exports = (creep) => {
 
 
 
-    if (creep.memory.index === undefined) {
-        //Assign Harvester
-    }
+	if (creep.memory.index === undefined) {
+		//Assign Harvester
+	}
 
-    //Function sent from previous file
-    let work = () => {
+	//Function sent from previous file
+	let work = () => {
 
-    };
+	};
 
-    //Defined in this file
-    let harvest = () => {
+	//Defined in this file
+	let harvest = () => {
 
-    };
+	};
 
-    //Factor in Distance, Energy Left, Current Workers, Workers En Route
-    let acquireTarget = () => {
+	//Factor in Distance, Energy Left, Current Workers, Workers En Route
+	let acquireTarget = () => {
 
-    };
+	};
 
 
-    /*
+	/*
      if (isHarvesting) {
      if (isCreepFull) {
      work();
@@ -46,18 +46,18 @@ module.exports = (creep) => {
      */
 
 
-    if (creep.memory.harvesting && creep.carry.energy === creep.carryCapacity) {
+	if (creep.memory.harvesting && creep.carry.energy === creep.carryCapacity) {
 
-    }
-    else if (creep.memory.building && creep.carry.energy === 0) {
+	}
+	else if (creep.memory.building && creep.carry.energy === 0) {
 
-    }
+	}
 
-    if (creep.memory.harvesting) {
+	if (creep.memory.harvesting) {
 
-    } else {
+	} else {
 
-    }
+	}
 };
 
 /*
