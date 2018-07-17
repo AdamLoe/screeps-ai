@@ -1,6 +1,6 @@
-let Courier = require("./Courier");
-let Harvester = require("./Harvester");
-let Worker = require("./Worker");
+let Courier = require("./Roles/Courier");
+let Harvester = require("./Roles/Harvester");
+let Worker = require("./Roles/Worker");
 
 module.exports = () => {
 	for (let name in Game.creeps) {

@@ -1,22 +1,64 @@
-let handleHarvesters = (room, numSources, spawns) => {
 
+let defaultSrcMem = {
+	assignedHarv: null
 };
 
+let buildHarvester = require("../Spawning/buildHarvester");
+
+
+
 /*
-	Should Cycle Between Different Spawners
+ Should Cycle Between Different Spawners
  */
+
+// Returns [ Body, Memory, TicksToBuild ]
+
+
+
 module.exports = () => {
 
-	let name = "W8N7";
-	let room = Game.rooms[name];
+	for (let name in Game.rooms) {
+		let room = Game.rooms[name];
 
-	let sources = room.find(FIND_SOURCES);
-	sources.map(source => console.log(source.id));
-	console.log(sources);
-	let numSources = sources.length;
+		let coldStart = room.memory.coldStart;
+		if (room.memory.coldStart === false) {
+			room.memory.sources = room.find(FIND_SOURCES).map(src => src.id);
+			room.memory.spawns  = room.find(FIND_MY_SPAWNS).map(spw => spw.name);
+
+			let spawn = room.memory.spawns[0];
+			let source = room.memory.sources[0];
+
+			Game.spawns[spawn].memory.spawnQueue = [
+                buildHarvester(name, source, 300, 5)
+            ]
+
+
+			room.memory.coldStart = false;
+		}
+		if (room.memory.coldState === true) {
+
+			room.memory.parentRoom = room.memory.parentRoom || null;
+			let parentRoom = room.memory.parent;
+
+			let sources = room.find(FIND_SOURCES);
+			sources.map( ({ id }) => {
+				console.log("id", id);
+				if (Memory.sources.id === undefined) Memory.sources.id = defaultSrcMem;
+
+				let { assignedHarv } = Memory.sources[id];
+
+				if (assignedHarv === null || !(assignedHarv in Game.creeps)) {
+					console.log("Creep Dead Or Something");
+				}
+			});
+		}
+	}
 
 };
+
 /*
+
+ Game.spawns.Spawn1.spawnCreep([MOVE, MOVE, WORK], 1)
 
 for (let name in Game.rooms) {
 
@@ -68,6 +110,10 @@ for (let name in Game.rooms) {
 
  */
 /*
+
+
+
+
  Differentiators
  ---------------
  Room will make a request for workers, with how many spawns, and max energy to use.
@@ -87,7 +133,9 @@ for (let name in Game.rooms) {
  !my && owner != undefined //enemy-occupied
  !my // empty
 
-
+	30+
+	vs
+	190+, also 37.5, 30.5,
 
 
  Any Room That has Creep or Structure In It.

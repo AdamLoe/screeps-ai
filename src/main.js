@@ -5,6 +5,7 @@ let log = (str = num) => {
 	num += 1;
 };
 
+require("./Helpers/Memory")();
 require("./Helpers/logger")();
 log("Controller");
 require("./Controller/controller")();
@@ -13,6 +14,6 @@ require("./Spawning/queueHandler")();
 log("Creeps");
 require("./Actions/creepActions")();
 log("Towers");
-require("./Actions/towerActions")();
+require("./Structures/towerActions")();
 log("Cleanup");
 require("./Helpers/cleanup")();
