@@ -1,7 +1,7 @@
 let { bodyCost } = require("./helper");
 
 module.exports = ({
-	room, energy, maxParts, role,
+	roomName, energy, maxParts, role,
 	initialLoop, middleLoop,
 	memory
 }) => {
@@ -12,7 +12,7 @@ module.exports = ({
 
 	while (energy > 50) {
 		middleLoop.map( (loop) => {
-			console.log("loop", loop);
+			//console.log("loop", loop);
 			let cost = bodyCost(loop);
 			if (cost <= energy) {
 				energy -= cost;
@@ -28,16 +28,15 @@ module.exports = ({
 
 	Memory.nameClk += 1;
 	return {
-		roomName: "WN87",
+		name: role + Memory.nameClk,
 		body: [WORK, WORK, MOVE],
 		memory: {
 			ogRole: role,
 			currentRole: role,
-			room: room,
+			room: roomName,
 			work: works,
 			carry: carrys,
 			move: moves
-		},
-		name: role + Memory.nameClk
+		}
 	};
 };

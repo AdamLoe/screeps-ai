@@ -1,0 +1,207 @@
+Room should have states to save CPU,
+    states:
+        undefined
+            If already has source
+                If ours
+                    Just Started?
+                If enemy
+                    Enemy Territory
+            If no sources
+                Empty room we are entering
+        History
+            Lets us know we have seen this room, but do not currently have people in it
+Variables
+    State
+        Undefined **
+        Active **
+        Inactive
+    Owned
+        Ours  **
+        Enemy
+        Unowned **
+    OwnType:
+        Claim **
+        Reserve **
+    Enemy Presence?
+
+
+
+At what point do we drop all memory of a room we dont have access to?
+    We set state to historyState
+
+
+
+ energy/tick is the same for renewing creeps
+
+ avg = 50
+ 3 * 50 = 150 Ticks
+ 600 / 50 = 12 ticks / tick
+ 30 Ticks Saved, So If They can make it back in 27 Ticks? Renew Them
+ Math.floor( 600 / body_size )
+
+ 1-5-3 = 600 Cost, 9 Parts,
+ 1-11 = 600 COst, 12 Parts
+
+ 600 / 2.5 / 9 = 26.6666
+ 600 / 2.5 / 12 = 20
+ floor(600/9)
+ 600 / 12 = 50.00
+
+ Math.ceil( avg  / 2.5)
+ Math.floor( 12 / num )
+
+ if (avg === 50) Math.floor = 600 / num
+ if (avg === 100)Math.floor = 600 / num
+ if (avg === 50) Math.ceil = 20
+ if (avg === 100) Math.ceil = 40
+
+ if (avg === 50)  30 / num
+ if (avg === 100) 15 / num
+
+ avg = 50
+ num = 12 | 50 / 20 = 2.5 ticks / energy (worth 600)  600 / 1500 = .4e/t , renew is .4e/t
+ num = 24 | 25 / 20 = 1.25 ticks / energy (worth 1200)  1200 / 1500 = .8e/t
+ num = 48 | 12.5/20 = .625 ticks / energy
+
+ avg = 100
+ num = 12 | 15 / 12 = 1.25 ticks /energy (worth 1200)
+ rum = 24 | 7.5 / 12 = .625
+
+
+1/1/0 Cost 100, 50 / (distance * 2)
+1/2/0 Cost 150, 100 / (distance * 3)
+2/2/0 Cost 200, 100 / (distance * 2)
+
+1/1/0 = 25 / 100 = .25
+1/2/0 = 33 / 150 = .22
+2/2/0 = 50 / 200 = .25
+
+ 2-Source-Room = 20e/t
+ ------
+ 1-5 Harvester = 550 / (1500-60)
+ Dropping 1e/t
+ 1-5 Harvester = 550 / (1500-60)
+ Dropping 1e/t
+ 5-5 Carrier =  1000 / (1500-24) // Minus a whole cycle because not working in first and last half
+ Total = 2600/ 1500 = 1.44 + 2 = 3.44
+ ------
+ 1-5 Harvester = 550 / (1500-60)
+ Build Container .2e/t
+ 1-5 Harvester = 550 / (1500-60)
+ Build Container .2e/t
+ 5-5 Carrier =  1000 / (1500-24) // Minus a whole cycle because not working in first and last half
+ Total = 2600 / 1500 = 1.44 + .4 = 1.84
+
+ Total = 2600/ 1500 = 1.44
+
+ 0.38194444444 1-5
+ 0.42016806722
+ 0.44398907103 2-1-5
+
+ Carrier size doesn't matter, same decay
+ 5-5   = 250 Energy, 12 Walk Overs, 120 Decay
+
+ 3000/50 = 60 * 2
+ 3000/50 = 60 * 1.5
+
+ 15-30 = 1500 Energy, 2 Walk Overs,  90 Decay
+ 3000 Energy,
+ */
+
+
+/*
+
+ Game.spawns.Spawn1.spawnCreep([MOVE, MOVE, WORK], 1)
+
+for (let name in Game.rooms) {
+
+    let room =  Game.rooms[name];
+    let controller = room.controller;
+
+     let owned = controller.my;
+     let parent = room.memory.parent;
+
+     let RCL = controller.level;
+     let reservation = controller.reservation;
+
+    let sources = room.find( FIND_SOURCES );
+    let numSources = source.length();
+
+    let workers = room.memory.workers || [];
+    if (workers === []) {
+        RequestWorkers(room, numSources);
+    }
+    let harvesters = room.memory.harvesters || [];
+    if (harvesters === []) {
+        RequestHarvesters(room, numSources);
+    }
+
+
+    //Owned = Normal, Defend = Focus on Defense, Non Military Creeps only move energy internally
+    //Attack = Spawn Attack Creeps, Send to Room,
+    if (owned) {
+        room.memory.status = "Peace";
+        switch (RCL) {
+            case 1:
+                return RCL1(room, parent);
+            case 2:
+                return RCL2(room, parent);
+        }
+    } else if (reservation) {
+
+    } else {
+        room.memory.status = "Enemy";
+    }
+
+
+    console.log("----", "room:", name, "----");
+    console.log("RCL: ", RCL);
+    console.log("Res: ", reservation);
+    console.log(owned ? "Mine" : "Not Mine");
+    console.log("--------------------");
+}
+
+ */
+/*
+
+
+
+
+ Differentiators
+ ---------------
+ Room will make a request for workers, with how many spawns, and max energy to use.
+
+ Planning harvesters, max energy and num sources
+ Planning  couriers,  num sources, max energy,
+ Planning builders, maybe use harvesters for now?
+
+ Harvester Roles
+ If mining, continue,
+ If not in right room, Go there
+ Before starting to mine, make sure you can finish container first
+ Courier Roles
+ Check all containers,
+
+ RCL1 OR Reserved
+ !my && owner != undefined //enemy-occupied
+ !my // empty
+
+	30+
+	vs
+	190+, also 37.5, 30.5,
+
+
+ Any Room That has Creep or Structure In It.
+ ------------------
+ 3 Types
+ ----
+ Owned
+ RCL 1 - 8
+ Reserved
+ If Below Certain Ticks Left, Send Claimer, Otherwise RCL 1
+ In Queue
+
+ Un Reserved
+ Do Nothing
+
+ */

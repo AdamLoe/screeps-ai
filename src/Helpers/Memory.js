@@ -1,28 +1,30 @@
-module.exports = () => {
-
-	Memory.nameClk = Memory.nameClk || 0;
-
-	console.log("Setting Memory");
-
-	for (let name in Game.spawns) {
-		let spawn = Game.spawns[name];
-		let room = spawn.room;
-
-		let roomMem = room.memory.spawns;
-		if (roomMem === undefined) {
-			room.memory.spawns = [];
-		}
-		if (spawn in room) {
-			room.memory.spawns.concat(spawn);
+let justReset = () => {
+	if (_.size(Game.rooms) === 1) {
+		if (_.find(Game.rooms).controller.level === 1) {
+			if (_.size(Game.creeps) === 0) {
+				return true;
+			}
 		}
 	}
+	return false;
+};
 
+module.exports = () => {
 
-	Memory.sources = {
-	};
+	Memory.sources = Memory.sources || {};
+	Memory.nameClk = Memory.nameClk || 0;
+    
+	if ( justReset() ) {
+		console.log("++++++ CLEARING OLD MEMORY ++++++++++");
 
-	Memory.track = {
-		...Memory.track
-	};
+		Memory.rooms = {};
+		Memory.spawns = {};
+		Memory.sources = {};
+		Memory.creeps = {};
+		Memory.nameClk = 1;
+	}
 
+	if (Game.rooms.length === 1) {
+
+	}
 };

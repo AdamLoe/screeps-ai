@@ -1,19 +1,28 @@
-let num = 1;
+"use strict";
 
-let log = (str = num) => {
-	console.log("--", str, "--");
-	num += 1;
+require("./Prototypes/index");
+
+let modules = [
+    //Initialize memory variables on server restnpm
+	require("./Helpers/Memory"),
+
+	//Initialize Room and Source Roles / Structures
+	require("./Controller/roomController"),
+	require("./Controller/sourceController"),
+
+	//Handle Spawning
+	require("./Spawning/spawnController"),
+
+	require("./Actions/runCreeps"),
+	require("./Structures/towerActions"),
+
+	require("./Helpers/cleanup")
+];
+
+console.log("[][][] Cache Reset [][][]");
+
+module.exports.loop = function() {
+
+	console.log("===== LOOP START ======");
+	modules.map(module => module() );
 };
-
-require("./Helpers/Memory")();
-require("./Helpers/logger")();
-log("Controller");
-require("./Controller/controller")();
-log("Spawner");
-require("./Spawning/queueHandler")();
-log("Creeps");
-require("./Actions/creepActions")();
-log("Towers");
-require("./Structures/towerActions")();
-log("Cleanup");
-require("./Helpers/cleanup")();
