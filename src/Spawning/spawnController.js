@@ -1,12 +1,23 @@
 let runSpawnQueue = require("./spawnQueue").run;
-let runAutoList = require("./spawnAutoList").run;
+let runAutoList = require("./autoRoster").run;
+let updateCreepRoster = require("../Controller/updateCreepRoster");
+
+let spawnChanged = (spawn) => {
+	return true;
+};
 
 module.exports = () => {
 	for (let name in Game.spawns) {
 		let spawn = Game.spawns[name];
 
+		if (spawnChanged(spawn)) {  //We can temporarily downgrade a spawn when we are in
+			console.log("Spawned Changed");
+			updateCreepRoster(spawn);
+		}
+
 		runAutoList( spawn );
-		runSpawnQueue( Game.spawns[name] );
+		runSpawnQueue( spawn );
+
 	}
 };
 

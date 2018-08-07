@@ -61,8 +61,6 @@ let setSources = (room) => {
 			x: src.pos.x,
 			y: src.pos.y,
 			room: room.name,
-			harvesters: [],
-			couriers: [],
 			freeSpots: getFreeSpots(src.pos),
 			isActive: true,
 			target: room.memory.spawns[0],

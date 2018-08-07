@@ -1,19 +1,9 @@
-let { nextTo } = require("../Helpers/navigation");
+let setTask = require("../Creeps/setTask");
 
 module.exports = (creep) => {
-	let target = Game.getObjectById( creep.memory.target );
+	setTask(creep, "harvest", creep.memory.target, {
+		pos: creep.memory.dropPos,
+		range: 0
+	});
 
-	let inRange = creep.memory.inRange;
-
-	if (!inRange && nextTo(creep, target)) creep.memory.inRange = true;
-
-	if (creep.memory.inRange) {
-		let res = creep.harvest(target);
-		console.log("Harvest:", res);
-	} else {
-		let res = creep.moveTo(target, {
-			range: 1
-		});
-		console.log("Move:", res);
-	}
 };
