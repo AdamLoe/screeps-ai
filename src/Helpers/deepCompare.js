@@ -24,6 +24,9 @@ let compareArrays = (arr1, arr2) => {
 		    ret = false;
 		}
 	});
+	if (arr1.length !== arr2.length ) {
+		return false;
+	}
 	return ret;
 };
 

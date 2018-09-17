@@ -3,7 +3,11 @@ let runAutoList = require("./autoRoster").run;
 let updateCreepRoster = require("../Controller/updateCreepRoster");
 
 let spawnChanged = (spawn) => {
-	return true;
+	if (spawn.energyCapacity !== spawn.memory.energyCapacity) {
+		spawn.memory.energyCapacity = spawn.energyCapacity;
+		return true;
+	}
+	return false;
 };
 
 module.exports = () => {
@@ -11,7 +15,7 @@ module.exports = () => {
 		let spawn = Game.spawns[name];
 
 		if (spawnChanged(spawn)) {  //We can temporarily downgrade a spawn when we are in
-			console.log("Spawned Changed");
+			console.log("Spawned Changed : Updating Creep Roster");
 			updateCreepRoster(spawn);
 		}
 

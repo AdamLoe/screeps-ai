@@ -6,13 +6,9 @@ import commonjs from "rollup-plugin-commonjs";
 //import typescript from "rollup-plugin-typescript2";
 import screeps from "rollup-plugin-screeps";
 
-let cfg;
-const i = process.argv.indexOf("--dest") + 1;
-if (i === 0) {
-	console.log("No destination specified - code will be compiled but not uploaded");
-} else if (i >= process.argv.length || (cfg = require("./screeps")[process.argv[i]]) === null) {
-	throw new Error("Invalid upload destination");
-}
+let cfg = require("./screeps");
+
+console.log("config", JSON.stringify(cfg));
 
 export default {
 	input: "src/main.js",
@@ -27,7 +23,6 @@ export default {
 		clean(),
 		resolve(),
 		commonjs(),
-		//typescript({tsconfig: "./tsconfig.json"}),
-		screeps({config: cfg, dryRun: cfg === null})
+		screeps({config: cfg})
 	]
 };

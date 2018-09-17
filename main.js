@@ -93,11 +93,10 @@ Structure.prototype.currEnergy = function() {
 		case STRUCTURE_STORAGE:
 		case STRUCTURE_CONTAINER:
 			return this.store;
-			break;
-		case STRUCTURE_SPAWN:
 		case STRUCTURE_EXTENSION:
 		case STRUCTURE_LINK:
-			return this.energyAvailable;
+		case STRUCTURE_SPAWN:
+			return this.energy;
 	}
 };
 
@@ -106,10 +105,10 @@ Structure.prototype.maxEnergy = function() {
 		case STRUCTURE_STORAGE:
 		case STRUCTURE_CONTAINER:
 			return this.storeCapacity;
-			break;
-		case STRUCTURE_SPAWN:
 		case STRUCTURE_EXTENSION:
 		case STRUCTURE_LINK:
+			return this.energyCapacity;
+		case STRUCTURE_SPAWN:
 			return this.energyCapacity;
 	}
 };
@@ -872,7 +871,6 @@ var run = (spawn) => {
 	let hasCreepToSpawn = spawn.memory.spawnQueue.length > 0;
 
 	if (isSpawning && hasCreepToSpawn) {
-
 		let creep = spawn.memory.spawnQueue[0];
 
 		let room = spawn.room;
@@ -894,6 +892,11 @@ var add = (spawn, creep) => {
 
 	spawn.memory.spawnQueue.push(creep);
 };
+
+
+//The key is generated when
+//Whenever we actually add soemthing to
+//We need to make a respawn strategy
 
 var spawnQueue = {
 	run: run,
@@ -926,6 +929,9 @@ let compareArrays = (arr1, arr2) => {
 		    ret = false;
 		}
 	});
+	if (arr1.length !== arr2.length ) {
+		return false;
+	}
 	return ret;
 };
 
@@ -951,30 +957,29 @@ var deepCompare = compare;
 
 let addToQueue = spawnQueue.add;
 
+var get = (spawn) => {
+
+};
 var run$1 = (spawn) => {
 
 	spawn.memory.aliveCreeps.map( (creep, index) => {
+		if (!creep) {
+			spawn.memory.aliveCreeps.splice(index);
+		} else {
 
-		let {
-			memory,
-			body,
-			priority,
-			key,
-			alreadyRespawning
-		} = creep.memory;
+			let { name, alreadyRespawning } = creep;
+			let Dead = !(name in Game.creeps);
+			let AboutToDie = false; //!Dead || Game.creeps[name].ticksToLive < 1400;
 
-		let { name } = creep;
+			if ( Dead || AboutToDie) {
+				console.log("Creep:", name, " respawn started");
+				addToQueue(spawn, { ...creep});
+				spawn.memory.aliveCreeps[index].alreadyRespawning = true;
 
-		let Dead = !(name in Game.creeps);
-		let AboutToDie = false;//Game.creeps[creepName].ticksToLive < 100;
+				if ( Dead ) spawn.memory.aliveCreeps.splice(index);
+			}
 
-		if ( Dead || AboutToDie) {
-			addToQueue(spawn, { memory, body, priority, key });
-			spawn.memory.aliveCreeps[index].alreadyRespawning = true;
-
-			if ( Dead ) spawn.memory.aliveCreeps.splice(index);
 		}
-
 	});
 };
 
@@ -986,13 +991,17 @@ var update = (spawn, id, creeps) => {
 		console.log("Updating Auto Creeps", id);
 
 		if (id in spawn.memory.autoList) ;
-		creeps.map( creep => addToQueue(spawn, creep) );
+		creeps.map( (creep, index) => {
+			let key = id + ":" + index;
+			addToQueue(spawn, { ...creep, key });
+		});
 		//Send all in autoList to spawnQueue
 		spawn.memory.autoList[id] = creeps;
 	}
 };
 
 var autoRoster = {
+	get: get,
 	run: run$1,
 	update: update
 };
@@ -1000,40 +1009,88 @@ var autoRoster = {
 let updateAutoSpawner = autoRoster.update;
 
 
-let updateSources = (source, spawn) => {
-	let storage = spawn;
+let run$2 = function() {
+	this.addHarvester();
+	this.handleCouriers();
+	/*
+		This might eventually become a core part of our early game strategy in the future
+	if (this.rcl && this.freeSpots > 1) {
+		this.addHarvester();
+		this.handleCouriers();
+	}
+	*/
+	this.update();
+};
 
-	let rcl = source.room.controller.level;
-	let freeSpots = source.memory.freeSpots;
-
-	let path = source.pos.findPathTo(storage.pos, { range: 1, ignoreCreeps: true});
-
-
-	let dropPos = {
+//At 4 Work parts we reach 8e/t , problem is an addition 1/1 would need carry parts,, but it could easily make its target up in about 100 Ticks,
+	//Might not be neccesary
+//If we already have a harvester, we need to give it another spot to stand1
+//Any harvester past the first doesnt care about where he is dropping it,
+	//If we dont give a harvester a drop position, then he just gets in range
+	//If we dont give a courier a drop position, then it just searches for dropped energy near source
+//
+let addHarvester = function() {
+	let path = this.source.pos.findPathTo(this.spawn.pos, { range: 1, ignoreCreeps: true});
+	this.dropPos = {
 		x: path[0].x,
 		y: path[0].y,
-		roomName: source.room.name
+		roomName: this.source.room.name
 	};
-	source.memory.dropPos = dropPos;
+	this.source.memory.dropPos = this.dropPos;
+	this.creeps.push( genHarvester(this.source, this.dropPos) );
+};
 
-	let creeps = [ genHarvester(source, dropPos) ];
+let handleCouriers = function() {
+	//We need to get the distance required, this will keep constant no matter change in harvesters
+	//We need to establish some things first
+	//DropPos / Path needs to be made at start, im thinkin we just place the source in relation to the spawn, until further changes
+	//From here, calculate our extra energy per tick and add our leftover or overage over
+	//
+	this.storage = this.spawn;
 
+	let path = this.source.pos.findPathTo(this.storage.pos, { range: 1, ignoreCreeps: true});
 	let distance = path.length;
-	let energyPerTick = 3;
-	let carryPartsNeeded = energyPerTick * (distance * 2)/50;
-	//console.log("Waste:", wastage);
-	//If no road, then each extra carryPart costs 100 energy, but otherwise, it costs 50 to 100 depending on num parts
 
+	let currentWorkParts = 0;
+	let currentCarryParts = 0;
+	this.creeps.map( (creep) => {
+		creep.body.map( (part) => {
+			switch(part) {
+				case WORK:
+					currentWorkParts += 1;
+					break;
+				case CARRY:
+					currentCarryParts += 1;
+			}
+		});
+	});
+	let energyPerTick = currentWorkParts * 2; //Work Parts	//Carry Parts
+	let carryPartsNeeded = energyPerTick * (distance * 2)/50;
+	carryPartsNeeded -= currentCarryParts;
 
 	while ( carryPartsNeeded > .1 ) {
-		creeps.push( genCourier(1, source, storage, dropPos) );
+		this.creeps.push( genCourier(1, this.source, this.storage, this.dropPos) );
 		carryPartsNeeded -= 1;
 	}
+};
 
-	//How much energy we need to bring each round trip, divided by how
+let update$1 = function() {
+	updateAutoSpawner(this.spawn, this.source.id, this.creeps);
+};
 
-	updateAutoSpawner(spawn, source.id, creeps);
-
+let updateSource = (source, spawn) => {
+	return {
+		source,
+		spawn,
+		storage: null,
+		rcl: source.room.controller.level,
+		freeSpots: source.memory.freeSpots,
+		creeps: [],
+		run: run$2,
+		update: update$1,
+		addHarvester,
+		handleCouriers
+	};
 };
 
 let genHarvester = (source, dropPos) => {
@@ -1050,6 +1107,7 @@ let genHarvester = (source, dropPos) => {
 };
 
 let genCourier = (carryParts, source, target, dropPos, hasRoad=false) => {
+	//At lower RCLs we use less carry Parts, might not even fill it
 	return {
 		priority: 1 + source.memory.spawnPriority,
 		memory: {
@@ -1064,22 +1122,27 @@ let genCourier = (carryParts, source, target, dropPos, hasRoad=false) => {
 };
 
 
-var updateSources_1 = (spawn) => {
+var updateSources = (spawn) => {
 	let sources = spawn.room.memory.sources;
 	sources.map( (sourceId) => {
 
 		let source = Game.getObjectById(sourceId);
-		updateSources(source, spawn);
+		let sourceUpdater = updateSource(source, spawn);
+		sourceUpdater.run();
 	});
 };
 
-let { update: update$1 } = autoRoster;
+/*
+	Only really want one spy per spawn cluster,  though we might want to creep a new spy for incubating rooms
+ */
+
+let { update: update$2 } = autoRoster;
 
 var updateSpies = (spawn) => {
 	let id = spawn.id + ":spy";
 	let creeps = [ genSpy() ];
     
-	update$1(spawn, id, creeps);
+	update$2(spawn, id, creeps);
 };
 
 let genSpy = () => {
@@ -1093,19 +1156,28 @@ let genSpy = () => {
 };
 
 var updateCreepRoster = (spawn) => {
-	updateSources_1(spawn);
+	updateSources(spawn);
 	updateSpies(spawn);
 };
 
 let runSpawnQueue = spawnQueue.run;
 let runAutoList = autoRoster.run;
 
+
+let spawnChanged = (spawn) => {
+	if (spawn.energyCapacity !== spawn.memory.energyCapacity) {
+		spawn.memory.energyCapacity = spawn.energyCapacity;
+		return true;
+	}
+	return false;
+};
+
 var spawnController = () => {
 	for (let name in Game.spawns) {
 		let spawn = Game.spawns[name];
 
-		{  //We can temporarily downgrade a spawn when we are in
-			console.log("Spawned Changed");
+		if (spawnChanged(spawn)) {  //We can temporarily downgrade a spawn when we are in
+			console.log("Spawned Changed : Updating Creep Roster");
 			updateCreepRoster(spawn);
 		}
 
@@ -1113,6 +1185,33 @@ var spawnController = () => {
 		runSpawnQueue( spawn );
 
 	}
+};
+
+let checkTaskArr = {
+	"harvest" (creep, target) {
+		return target.energy > 0;
+	},
+	"pickup" (creep, target) {
+		let creepNotFull = creep.carry.energy < creep.carryCapacity;
+		let targetNotEmpty = target && target.amount > 0; //target.amount > 0;
+		return creepNotFull && targetNotEmpty;
+	},
+	"transfer": (creep, target) => {
+		let creepNotEmpty = creep.carry.energy > 0;
+		let targetNotFull = target.currEnergy() < target.maxEnergy();
+		return creepNotEmpty && targetNotFull;
+	},
+	"withdraw": (creep, target) => {
+		return true;
+	},
+	"idle": (creep, target) => {
+		return creep.memory.idleTicks > 0;
+	}
+};
+
+var checkTask = (creep, target) => {
+	let func = checkTaskArr[creep.memory.taskName];
+	return func(creep, target);
 };
 
 let nextTo = (pos1, pos2) => {
@@ -1144,34 +1243,7 @@ var navigation = {
 	nextTo: nextTo_1
 };
 
-let checkTaskArr = {
-	"harvest" (creep, target) {
-		return target.energy > 0;
-	},
-	"pickup" (creep, target) {
-		let creepNotFull = creep.carry.energy < creep.carryCapacity;
-		let targetNotEmpty = target && target.amount > 0; //target.amount > 0;
-		return creepNotFull && targetNotEmpty;
-	},
-	"transfer": (creep, target) => {
-		let creepNotEmpty = creep.carry.energy > 0;
-		let targetNotFull = target.currEnergy() < target.maxEnergy();
-		return creepNotEmpty && targetNotFull;
-	},
-	"withdraw": (creep, target) => {
-		return true;
-	},
-	"idle": (creep, target) => {
-		return creep.memory.idleTicks > 0;
-	}
-};
-
-var checkTask = (creep, target) => {
-	let func = checkTaskArr[creep.memory.taskName];
-	return func(creep, target);
-	//return target if true, otherwise false
-};
-
+let { nextTo: nextTo$1 } = navigation;
 
 let getTask = {
 	"build": (creep, target) => {
@@ -1190,7 +1262,7 @@ let getTask = {
 		creep.pickup(target);
 	},
 	"reserveController": (creep, target) => {
-	    creep.reserveController(target);
+		creep.reserveController(target);
 	},
 	"transfer": (creep, target) => {
 		creep.transfer(target, RESOURCE_ENERGY);
@@ -1206,7 +1278,24 @@ let getTask = {
 	}
 };
 
-let { nextTo: nextTo$1 } = navigation;
+var runTask = (creep, target) => {
+	let { taskName, taskOptions, taskInRange, taskPos, taskRange } = creep.memory;
+
+	if (taskPos === null || taskPos === undefined) {
+		taskPos = target;
+	} else {
+		taskPos = new RoomPosition(taskPos.x, taskPos.y, taskPos.roomName);
+	}
+
+	let res;
+	if (nextTo$1(creep, taskPos) <= taskRange ) {
+		res = getTask[taskName](creep, target, taskOptions);
+	} else {
+		res = creep.travelTo(taskPos, {
+			range: taskRange
+		});
+	}
+};
 
 var setTask = (creep, task, target, options) => {
 	options = {
@@ -1228,92 +1317,13 @@ let defaultOptions = {
 	pos: null
 };
 
-var runTask = (creep, target) => {
-	let { taskName, taskOptions, taskInRange, taskPos, taskRange } = creep.memory;
-
-	if (taskPos === null || taskPos === undefined) {
-		taskPos = target;
-	} else {
-		taskPos = new RoomPosition(taskPos.x, taskPos.y, taskPos.roomName);
-	}
-
-	let res;
-	if (nextTo$1(creep, taskPos) <= taskRange ) {
-		res = getTask[taskName](creep, target, taskOptions);
-	} else {
-		res = creep.travelTo(taskPos, {
-			range: taskRange
-		});
-	}
-
-	//console.log(JSON.stringify(creep.memory));
-	//console.log(creep.name, creep.memory.taskName, nextTo(creep, taskPos), creep.memory.taskTarget, Game.getObjectById(creep.memory.taskTarget));
-	//console.log(creep.memory.name, taskName, creep.memory.taskInRange, nextTo(creep, taskPos) <= taskRange, JSON.stringify(target));
-};
-
-
-
-/*
- switch (token) {
- case OK:
- break;
- case ERR_NOT_OWNER: //Should never happen
- break;
- case ERR_NO_PATH: //Creep Probably blocking, might want to abandon task though
- break;
- case ERR_NAME_EXISTS: //Creating Flag or Spawning Creep
- break;
- case ERR_BUSY: //Being Spawned, or Trying to Delete something with hostile creeps in room
- break;
- case ERR_NOT_FOUND:  //No Extractor, not in path, or cant cancel order
- break;
- case ERR_NOT_ENOUGH_RESOURCES: //Source/Container is empty, or creep is empty
- break;
- case ERR_INVALID_TARGET: //Should reTask creep
- break;
- case ERR_FULL: //
- break;
- case ERR_NOT_IN_RANGE:  //Need to move obviously
- break;
- case ERR_INVALID_ARGS:
- break;
- case ERR_TIRED: //Wait til next turn
- break;
- case ERR_NO_BODYPART:
- break;
- case ERR_RCL_NOT_ENOUGH:
- break;
- case ERR_GCL_NOT_ENOUGH:
- break;
- }
- */
-
-var creepAction = {
-	checkTask: checkTask,
-	setTask: setTask,
-	runTask: runTask
-};
-
-let { setTask: setTask$1 } = creepAction;
-
 var harvesterRun = (creep) => {
-	setTask$1(creep, "harvest", creep.memory.target, {
+	setTask(creep, "harvest", creep.memory.target, {
 		pos: creep.memory.dropPos,
 		range: 0
 	});
 
 };
-
-var spyRun = (creep) => {
-    console.log(creep.name);
-};
-
-var spyRun$1 = /*#__PURE__*/Object.freeze({
-	default: spyRun,
-	__moduleExports: spyRun
-});
-
-let { setTask: setTask$3 } = creepAction;
 
 let findEnergyStorage = (creep) => {
 	return Game.spawns.Spawn1.id;
@@ -1330,12 +1340,12 @@ let withdraw = (creep) => {
 
 
 	if (container) {
-		setTask$3(creep, "pickup", container.id);
+		setTask(creep, "pickup", container.id);
 	} else if (energy) {
-		setTask$3(creep, "pickup", energy.energy.id);
+		setTask(creep, "pickup", energy.energy.id);
 	} else {
 		creep.memory.idleTicks = 1;
-		setTask$3(creep, "idle", null);
+		setTask(creep, "idle", null);
 	}
 
 };
@@ -1344,11 +1354,11 @@ let transfer = (creep) => {
 	let target = findEnergyStorage(creep);
 
 	if (target !== null) {
-		setTask$3(creep, "transfer", target);
+		setTask(creep, "transfer", target);
 	} else {
 
 		if (creep.carry.energy / creep.carryCapacity > .75 ) {
-			setTask$3(creep, "idle", 1);
+			setTask(creep, "idle", 1);
 
 		} else {
 			withdraw(creep);
@@ -1368,19 +1378,12 @@ var courierRun = (creep) => {
 };
 
 var getNewTask = (creep) => {
-	console.log(spyRun$1, typeof spyRun$1);
 	switch (creep.memory.role) {
 		case "harvester":  	harvesterRun(creep); 	break;
-		case "spy":			spyRun$1(creep);			break;
+		case "spy":			break;
 		case "courier": 	courierRun(creep);		break;
 	}
 };
-
-let checkTask$1 = creepAction.checkTask;
-let runTask$1 = creepAction.runTask;
-
-
-
 
 let getTarget = (creep) => {
 	let target = creep.memory.taskTarget;
@@ -1405,7 +1408,7 @@ var creepController = () => {
 
 		if (hasTask) {
 			target = getTarget(creep);
-			taskValid = checkTask$1(creep, target);
+			taskValid = checkTask(creep, target);
 			if (!taskValid) {
 				getNewTask(creep);
 			}
@@ -1414,8 +1417,7 @@ var creepController = () => {
 			target = getTarget(creep);
 		}
 
-		runTask$1(creep, target);
-		console.log(creep.name, creep.memory.taskName);
+		runTask(creep, target);
 
 
 	}

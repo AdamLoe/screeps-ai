@@ -34,7 +34,6 @@ exports.run = (spawn) => {
 	let hasCreepToSpawn = spawn.memory.spawnQueue.length > 0;
 
 	if (isSpawning && hasCreepToSpawn) {
-
 		let creep = spawn.memory.spawnQueue[0];
 
 		let room = spawn.room;
@@ -56,3 +55,8 @@ exports.add = (spawn, creep) => {
 
 	spawn.memory.spawnQueue.push(creep);
 };
+
+
+//The key is generated when
+//Whenever we actually add soemthing to
+//We need to make a respawn strategy

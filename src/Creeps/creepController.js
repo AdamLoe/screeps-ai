@@ -35,7 +35,6 @@ module.exports = () => {
 		}
 
 		runTask(creep, target);
-		console.log(creep.name, creep.memory.taskName);
 
 
 	}
