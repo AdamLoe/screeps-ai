@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "module": "esnext",
+    "lib": ["esnext"],
+    "target": "es2017",
+    "moduleResolution": "Node",
+    "newLine": "CRLF",
+    "outDir": "tsc-out",
+    "baseUrl": "src/",
+    "sourceMap": false,
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "noImplicitThis": false,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "allowUnusedLabels": true,
+    "allowSyntheticDefaultImports": true,
+    "allowUnreachableCode": false,
+    "removeComments": false,
+    "allowUmdGlobalAccess": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ],
+  "typedocOptions": {
+    "mode": "file",
+    "out": "../overmind-docs/docs",
+    "ignoreCompilerErrors": true,
+    "excludeNotExported": true,
+    "exclude": "**/*+(Assimilator|Overmind).ts",
+    "readme": "none"
+  }
+}
