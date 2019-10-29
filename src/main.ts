@@ -1,6 +1,6 @@
-import {SpacersChoiceMemory} from './memory/spacer-memory';
-import {SpacersChoiceBoard} from './spacers-choice-board';
-import {getGlobalObject} from "./util/global";
+import {SpacersChoiceMemory} from './memory/memory';
+import {SpacersBoard} from './spacers-board';
+import {getGlobalObject} from './util/global';
 
 export function loop() {
 
@@ -13,7 +13,7 @@ export function loop() {
    * Setup our board with our memory / game object
    */
   const global = getGlobalObject();
-  global.spacerBoard = new SpacersChoiceBoard();
+  global.spacerBoard = new SpacersBoard();
   global.spacerBoard.init();
 
   /**

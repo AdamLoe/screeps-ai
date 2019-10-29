@@ -1,10 +1,11 @@
-import {Citizen, SpacersChoiceCreep} from '../citizen/spacer-citizen';
-import {getSpacerId} from '../util/utils';
-import {SpacersChoiceRoom} from './spacer-room';
-import {buildSpawnRequestsForTownship, ISpawnRequest} from './spawn-requests';
-import {buildTaskRequestsForTownship, ITaskRequest} from './task-requests';
-import {SpacersChoiceBoard} from "../spacers-choice-board";
-import {SpacersChoiceMemory} from "../memory/spacer-memory";
+import { SpacersChoiceCreep } from '../base-classes/creep';
+import { SpacersChoiceRoom } from '../base-classes/room';
+import { SpacersChoiceSource } from '../base-classes/source';
+import { SpacersChoiceCitizen } from '../citizen/citizen';
+import { SpacersChoiceMemory } from '../memory/memory';
+import { buildSpawnRequestsForTownship, ISpawnRequest } from '../planning/spawn-requests';
+import { buildTaskRequestsForTownship, ITaskRequest } from '../planning/task-requests';
+import { getSpacerId } from '../util/utils';
 
 export interface ITownshipCachedRequests {
   gcl: number;
@@ -15,26 +16,66 @@ export interface ITownshipCachedRequests {
 
 export interface ITownshipMemory {
   cachedRequests?: ITownshipCachedRequests;
+  rooms: string[];
 }
 
 /**
  * Townships handle spawning citizens and delegating tasks based on objects inside of the room
  */
-export class SpacerTownship {
+export class Township {
+
+  /**
+   * The ID we store our township with
+   */
   spacerId: string;
+
+  /**
+   * The primary room of our township (Where our base lives)
+   */
   primaryRoom: SpacersChoiceRoom;
-  citizens: { [spacerId: string]: Citizen};
+
+  /**
+   * All of the rooms assigned to our township. Primary Rooms + Remote Rooms
+   */
+  rooms: SpacersChoiceRoom[];
+
+  /**
+   * All of the sources assigned to our township. Primary/Remote sources
+   */
+  sources: SpacersChoiceSource[];
+
+  /**
+   * A list of all of the citizens who live in our township.
+   */
+  citizens: { [spacerId: string]: SpacersChoiceCitizen};
+
+  /**
+   * The memory object for our township
+   */
   memory: ITownshipMemory;
+
+  /**
+   * A list of all of the creeps we should keep spawned
+   */
   spawnRequests: ISpawnRequest[];
+
+  /**
+   * A list of all of the tasks that need to be completed
+   */
   taskRequests: ITaskRequest[];
 
   /**
    * Default Constructor. Load our data from our room/creeps
    */
-  constructor(room: Room, creeps: SpacersChoiceCreep[]) {
-    // TODO: We need to get these IDs from somewhere. We are using these IDs in spawn/task so we can't be generating on every tick
+  constructor(
+    room: Room,
+    creeps: SpacersChoiceCreep[],
+  ) {
+    // TODO: We are using these IDs in spawn/task so we can't be generating on every tick
     this.spacerId = getSpacerId();
     this.primaryRoom = new SpacersChoiceRoom(room);
+    this.rooms = [this.primaryRoom];
+    this.sources = [];
     this.buildCurrentCitizenList(creeps);
     this.memory = SpacersChoiceMemory.getTownshipMemory(this.spacerId);
   }
@@ -45,7 +86,7 @@ export class SpacerTownship {
   buildCurrentCitizenList(creeps: SpacersChoiceCreep[]) {
     this.citizens = {};
     creeps.forEach((creep) => {
-      const citizen = new Citizen(creep);
+      const citizen = new SpacersChoiceCitizen(creep);
       this.citizens[citizen.spacerId] = citizen;
     });
   }
@@ -57,6 +98,7 @@ export class SpacerTownship {
     if (this.areCachedRequestsOutOfDate()) {
       this.buildAndCacheRequests();
     }
+
   }
   /**
    * Are we cached task && spawn requests list out of date

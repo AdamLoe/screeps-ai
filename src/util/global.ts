@@ -1,7 +1,7 @@
-import {SpacersChoiceBoard} from '../spacers-choice-board';
+import {SpacersBoard} from '../spacers-board';
 
 export interface ISpacerGlobalData {
-  spacerBoard: SpacersChoiceBoard;
+  spacerBoard: SpacersBoard;
 }
 
 export function getGlobalObject(): ISpacerGlobalData {

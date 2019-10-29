@@ -1,4 +1,4 @@
-import {ITownshipMemory} from '../township/spacer-township';
+import {ITownshipMemory} from '../township/township';
 
 export interface ISourceMemory {
   test: boolean;
@@ -80,8 +80,9 @@ export class SpacersChoiceMemory {
     return memory.townships[spacerId];
   }
 
-  static setTownshipMemory(spacerId: string, townshipMemory: ITownshipMemory) {
+  static getSourceMemory(spacerId: string): ISourceMemory {
     const memory = SpacersChoiceMemory.get();
-    memory.townships[spacerId] = townshipMemory;
+    memory.sources[spacerId] = memory.sources[spacerId] || {};
+    return memory.sources[spacerId];
   }
 }

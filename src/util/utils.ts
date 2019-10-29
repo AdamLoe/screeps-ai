@@ -1,4 +1,4 @@
-import {SpacersChoiceMemory} from '../memory/spacer-memory';
+import {SpacersChoiceMemory} from '../memory/memory';
 
 /**
  * Returns a new spacer ID. Also handles incrementing our name counter

@@ -1,15 +1,15 @@
-import {SpacersChoiceCreep} from './citizen/spacer-citizen';
-import {SpacerTownship} from './township/spacer-township';
+import {SpacersChoiceCreep} from './base-classes/creep';
+import {Township} from './township/township';
 
 /**
  * The spacers board simply handles each of our townships by passing them their rooms and citizen data.
  */
-export class SpacersChoiceBoard implements Partial<Game> {
+export class SpacersBoard implements Partial<Game> {
 
   /**
    * Self Made Classes for handling game objects
    */
-  townships: { [spacerId: string]: SpacerTownship };
+  townships: { [spacerId: string]: Township };
 
   /**
    * Properties copied from our game object
@@ -38,7 +38,7 @@ export class SpacersChoiceBoard implements Partial<Game> {
       const room = this.rooms[roomId];
 
       // TODO: Pass a list of all creeps to handle for each room
-      const township = new SpacerTownship(room, []);
+      const township = new Township(room, []);
       this.townships[township.spacerId] = township;
     }
   }
