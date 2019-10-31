@@ -9,6 +9,7 @@ npm-debug.log
 .gitattributes
 .screeps.json
 /dist
+dist/
 
 ~/package-lock.json
 
