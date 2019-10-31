@@ -124,17 +124,17 @@ var JobEnum;
     JobEnum["REPAIR"] = "repair";
 })(JobEnum || (JobEnum = {}));
 
-var PriorityEnum;
-(function (PriorityEnum) {
-    PriorityEnum[PriorityEnum["FIRST_HARVESTER"] = 100] = "FIRST_HARVESTER";
-    PriorityEnum[PriorityEnum["FIRST_HAULER"] = 90] = "FIRST_HAULER";
-    PriorityEnum[PriorityEnum["PRIMARY_ROOM_HARVESTER"] = 80] = "PRIMARY_ROOM_HARVESTER";
-    PriorityEnum[PriorityEnum["PRIMARY_ROOM_HAULER"] = 75] = "PRIMARY_ROOM_HAULER";
-    PriorityEnum[PriorityEnum["FIRST_BUILDER"] = 60] = "FIRST_BUILDER";
-    PriorityEnum[PriorityEnum["FIRST_UPGRADER"] = 55] = "FIRST_UPGRADER";
-    PriorityEnum[PriorityEnum["REMOTE_SOURCE_HARVESTER"] = 40] = "REMOTE_SOURCE_HARVESTER";
-    PriorityEnum[PriorityEnum["REMOTE_SOURCE_HAULER"] = 35] = "REMOTE_SOURCE_HAULER";
-})(PriorityEnum || (PriorityEnum = {}));
+var JobPriorityEnum;
+(function (JobPriorityEnum) {
+    JobPriorityEnum[JobPriorityEnum["FIRST_HARVESTER"] = 100] = "FIRST_HARVESTER";
+    JobPriorityEnum[JobPriorityEnum["FIRST_HAULER"] = 90] = "FIRST_HAULER";
+    JobPriorityEnum[JobPriorityEnum["PRIMARY_ROOM_HARVESTER"] = 80] = "PRIMARY_ROOM_HARVESTER";
+    JobPriorityEnum[JobPriorityEnum["PRIMARY_ROOM_HAULER"] = 75] = "PRIMARY_ROOM_HAULER";
+    JobPriorityEnum[JobPriorityEnum["FIRST_BUILDER"] = 60] = "FIRST_BUILDER";
+    JobPriorityEnum[JobPriorityEnum["FIRST_UPGRADER"] = 55] = "FIRST_UPGRADER";
+    JobPriorityEnum[JobPriorityEnum["REMOTE_SOURCE_HARVESTER"] = 40] = "REMOTE_SOURCE_HARVESTER";
+    JobPriorityEnum[JobPriorityEnum["REMOTE_SOURCE_HAULER"] = 35] = "REMOTE_SOURCE_HAULER";
+})(JobPriorityEnum || (JobPriorityEnum = {}));
 
 function buildSpawnRequestsForTownship(township) {
     const spawnRequests = [];
@@ -145,24 +145,47 @@ function buildSpawnRequestsForTownship(township) {
             townshipId: township.spacerId,
             job: JobEnum.HARVEST,
             bodyParts: [MOVE, WORK, WORK],
-            priority: index === 0 ? PriorityEnum.FIRST_HARVESTER : PriorityEnum.PRIMARY_ROOM_HARVESTER
+            priority: index === 0 ? JobPriorityEnum.FIRST_HARVESTER : JobPriorityEnum.PRIMARY_ROOM_HARVESTER
         });
         spawnRequests.push({
             townshipId: township.spacerId,
             job: JobEnum.HARVEST,
             bodyParts: [MOVE, CARRY, CARRY],
-            priority: index === 0 ? PriorityEnum.FIRST_HAULER : PriorityEnum.PRIMARY_ROOM_HAULER
+            priority: index === 0 ? JobPriorityEnum.FIRST_HAULER : JobPriorityEnum.PRIMARY_ROOM_HAULER
         });
     });
     return spawnRequests;
 }
 
+var TaskPriorityEnum;
+(function (TaskPriorityEnum) {
+    TaskPriorityEnum[TaskPriorityEnum["HARVEST"] = 1000] = "HARVEST";
+})(TaskPriorityEnum || (TaskPriorityEnum = {}));
+
+var TaskEnum;
+(function (TaskEnum) {
+    TaskEnum["BUILD"] = "build";
+    TaskEnum["HARVEST"] = "harvest";
+    TaskEnum["HEAL"] = "heal";
+    TaskEnum["REPAIR"] = "repair";
+    TaskEnum["UPGRADE_CONTROLLER"] = "upgradeController";
+})(TaskEnum || (TaskEnum = {}));
+
 function buildTaskRequestsForTownship(township) {
-    // Mine this shit
-    // Pickup this shit from container
-    // Put shit in this container/spawner/extension
-    // Upgrade this
-    return [];
+    const taskRequests = [];
+    // Create a hauler and carrier for each source
+    township.sources
+        .forEach((source) => {
+        taskRequests.push({
+            townshipId: township.spacerId,
+            job: JobEnum.HARVEST,
+            task: TaskEnum.HARVEST,
+            posX: source.pos.x,
+            posY: source.pos.y,
+            priority: TaskPriorityEnum.HARVEST
+        });
+    });
+    return taskRequests;
 }
 
 /**
@@ -199,13 +222,31 @@ class Township {
             this.memory.primaryRoomId = primaryRoom.spacerId;
             this.memory.rooms = rooms.map((room) => room.spacerId);
         }
+        this.spawnRequests = this.getSpawnRequests();
+        this.taskRequests = this.getTaskRequests();
+    }
+    /**
+     * Get our spawn requests. If cache is expired/null, reset our cache
+     */
+    getSpawnRequests() {
         if (this.areCachedRequestsOutOfDate()) {
-            this.buildAndCacheRequests();
+            this.memory.cachedRequests = {
+                gcl: this.primaryRoom.gcl,
+                maxEnergy: this.primaryRoom.energy,
+                spawnRequests: buildSpawnRequestsForTownship(this),
+                taskRequests: []
+            };
         }
-        else {
-            this.spawnRequests = this.memory.cachedRequests.spawnRequests;
-            this.taskRequests = this.memory.cachedRequests.taskRequests;
-        }
+        return this.memory.cachedRequests.spawnRequests;
+    }
+    /**
+     * Get our task requests. Build new task list of every tick
+     */
+    getTaskRequests() {
+        // Wait a sec, some tasks need to persist
+        // So how do I keep harvest tasks persistent
+        this.memory.cachedRequests.taskRequests = buildTaskRequestsForTownship(this);
+        return this.memory.cachedRequests.taskRequests;
     }
     /**
      * Are we cached task && spawn requests list out of date
@@ -219,19 +260,6 @@ class Township {
         else {
             return true;
         }
-    }
-    /**
-     * Build and cache our new task/spawn request lists
-     */
-    buildAndCacheRequests() {
-        this.spawnRequests = buildSpawnRequestsForTownship(this);
-        this.taskRequests = buildTaskRequestsForTownship();
-        this.memory.cachedRequests = {
-            gcl: this.primaryRoom.gcl,
-            maxEnergy: this.primaryRoom.energy,
-            spawnRequests: this.spawnRequests,
-            taskRequests: this.taskRequests
-        };
     }
     /*
     **********************************************
@@ -250,6 +278,9 @@ class Township {
             creep.run();
         });
     }
+    /**
+     * On RUN, spawn any pendingRequests
+     */
     runSpawns() {
         const neededSpawns = this.spawnRequests
             // Is the creep not alive
@@ -278,9 +309,11 @@ class Township {
         })
             // Sort by priority
             .sort((s1, s2) => s2.priority - s1.priority);
+        // For each spawn, see if we need to spawn something
         this.spawns.forEach((spawn) => {
             const notSpawning = !spawn.spawning;
             const needToSpawn = neededSpawns[0];
+            // Can only spawn if we aren't spawning, and there is something to spawn
             if (notSpawning && needToSpawn) {
                 const spawnRequest = neededSpawns[0];
                 const bodyParts = spawnRequest.bodyParts;

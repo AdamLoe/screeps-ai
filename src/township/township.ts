@@ -70,14 +70,34 @@ export class Township {
       this.memory.rooms = rooms.map((room) => room.spacerId);
     }
 
-    if (this.areCachedRequestsOutOfDate()) {
-      this.buildAndCacheRequests();
-    } else {
-      this.spawnRequests = this.memory.cachedRequests.spawnRequests;
-      this.taskRequests = this.memory.cachedRequests.taskRequests;
-    }
+    this.spawnRequests = this.getSpawnRequests();
+    this.taskRequests = this.getTaskRequests();
   }
 
+  /**
+   * Get our spawn requests. If cache is expired/null, reset our cache
+   */
+  getSpawnRequests(): ISpawnRequest[] {
+    if (this.areCachedRequestsOutOfDate()) {
+      this.memory.cachedRequests = {
+        gcl: this.primaryRoom.gcl,
+        maxEnergy: this.primaryRoom.energy,
+        spawnRequests: buildSpawnRequestsForTownship(this),
+        taskRequests: []
+      };
+    }
+    return this.memory.cachedRequests.spawnRequests;
+  }
+
+  /**
+   * Get our task requests. Build new task list of every tick
+   */
+  getTaskRequests() {
+    // Wait a sec, some tasks need to persist
+    // So how do I keep harvest tasks persistent
+    this.memory.cachedRequests.taskRequests = buildTaskRequestsForTownship(this);
+    return this.memory.cachedRequests.taskRequests;
+  }
 
   /**
    * Are we cached task && spawn requests list out of date
@@ -91,20 +111,6 @@ export class Township {
     } else {
       return true;
     }
-  }
-
-  /**
-   * Build and cache our new task/spawn request lists
-   */
-  buildAndCacheRequests() {
-    this.spawnRequests = buildSpawnRequestsForTownship(this);
-    this.taskRequests = buildTaskRequestsForTownship(this);
-    this.memory.cachedRequests = {
-      gcl: this.primaryRoom.gcl,
-      maxEnergy: this.primaryRoom.energy,
-      spawnRequests: this.spawnRequests,
-      taskRequests:  this.taskRequests
-    };
   }
 
   /*
@@ -122,13 +128,14 @@ export class Township {
   }
 
   runCreeps() {
-
     this.creeps.forEach((creep) => {
       creep.run();
     });
-
   }
 
+  /**
+   * On RUN, spawn any pendingRequests
+   */
   runSpawns() {
     const neededSpawns = this.spawnRequests
       // Is the creep not alive
@@ -157,10 +164,12 @@ export class Township {
       // Sort by priority
       .sort((s1, s2) => s2.priority - s1.priority);
 
+    // For each spawn, see if we need to spawn something
     this.spawns.forEach((spawn) => {
       const notSpawning = !spawn.spawning;
       const needToSpawn = neededSpawns[0];
 
+      // Can only spawn if we aren't spawning, and there is something to spawn
       if (notSpawning && needToSpawn) {
         const spawnRequest = neededSpawns[0];
 

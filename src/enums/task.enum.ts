@@ -1,7 +1,7 @@
 export enum TaskEnum {
-  build = 'build',
-  harvest = 'harvest',
-  heal = 'heal',
-  repair = 'repair',
-  upgradeController = 'upgradeController'
+  BUILD = 'build',
+  HARVEST = 'harvest',
+  HEAL = 'heal',
+  REPAIR = 'repair',
+  UPGRADE_CONTROLLER = 'upgradeController'
 }

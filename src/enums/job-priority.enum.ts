@@ -1,4 +1,4 @@
-export enum PriorityEnum {
+export enum JobPriorityEnum {
   FIRST_HARVESTER = 100,
   FIRST_HAULER = 90,
   PRIMARY_ROOM_HARVESTER = 80,
