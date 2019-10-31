@@ -1,11 +1,12 @@
-import { SpacersChoiceCreep } from '../base-classes/creep';
 import { SpacersChoiceRoom } from '../base-classes/room';
 import { SpacersChoiceSource } from '../base-classes/source';
+import { SpacersChoiceSpawn } from '../base-classes/spawn';
 import { SpacersChoiceCitizen } from '../citizen/citizen';
 import { SpacersChoiceMemory } from '../memory/memory';
 import { buildSpawnRequestsForTownship, ISpawnRequest } from '../planning/spawn-requests';
 import { buildTaskRequestsForTownship, ITaskRequest } from '../planning/task-requests';
 import { getSpacerId } from '../util/utils';
+import {SpacersChoiceCreep} from "../base-classes/creep";
 
 export interface ITownshipCachedRequests {
   gcl: number;
@@ -28,67 +29,40 @@ export class Township {
    * The ID we store our township with
    */
   spacerId: string;
-
-  /**
-   * The primary room of our township (Where our base lives)
-   */
   primaryRoom: SpacersChoiceRoom;
-
-  /**
-   * All of the rooms assigned to our township. Primary Rooms + Remote Rooms
-   */
   rooms: SpacersChoiceRoom[];
-
-  /**
-   * All of the sources assigned to our township. Primary/Remote sources
-   */
+  creeps: SpacersChoiceCreep[];
   sources: SpacersChoiceSource[];
-
-  /**
-   * A list of all of the citizens who live in our township.
-   */
-  citizens: { [spacerId: string]: SpacersChoiceCitizen};
-
-  /**
-   * The memory object for our township
-   */
+  spawns: SpacersChoiceSpawn[];
   memory: ITownshipMemory;
-
-  /**
-   * A list of all of the creeps we should keep spawned
-   */
   spawnRequests: ISpawnRequest[];
-
-  /**
-   * A list of all of the tasks that need to be completed
-   */
   taskRequests: ITaskRequest[];
 
   /**
    * Default Constructor. Load our data from our room/creeps
    */
-  constructor(
-    room: Room,
+  constructor(data: {
+    spacerId?: string,
+    primaryRoom: SpacersChoiceRoom,
+    rooms: SpacersChoiceRoom[],
     creeps: SpacersChoiceCreep[],
-  ) {
-    // TODO: We are using these IDs in spawn/task so we can't be generating on every tick
-    this.spacerId = getSpacerId();
-    this.primaryRoom = new SpacersChoiceRoom(room);
-    this.rooms = [this.primaryRoom];
-    this.sources = [];
-    this.buildCurrentCitizenList(creeps);
-    this.memory = SpacersChoiceMemory.getTownshipMemory(this.spacerId);
-  }
+    sources: SpacersChoiceSource[],
+    spawns: SpacersChoiceSpawn[]
+  }) {
+    const { spacerId, primaryRoom, rooms, creeps, sources, spawns } = data;
 
-  /**
-   * Build our list of citizens from our list of creeps
-   */
-  buildCurrentCitizenList(creeps: SpacersChoiceCreep[]) {
-    this.citizens = {};
-    creeps.forEach((creep) => {
-      const citizen = new SpacersChoiceCitizen(creep);
-      this.citizens[citizen.spacerId] = citizen;
-    });
+    // TODO: We are using these IDs in spawn/task so we can't be generating on every tick
+    this.spacerId = spacerId || getSpacerId();
+    this.primaryRoom = primaryRoom;
+    this.rooms = rooms;
+    this.creeps = creeps;
+    this.sources = sources;
+    this.spawns = spawns;
+    this.memory = SpacersChoiceMemory.getTownshipMemory(this.spacerId);
+    console.log(JSON.stringify(rooms));
+    console.log(JSON.stringify(creeps));
+    console.log(JSON.stringify(sources));
+    console.log(JSON.stringify(spawns));
   }
 
   /**
@@ -98,7 +72,9 @@ export class Township {
     if (this.areCachedRequestsOutOfDate()) {
       this.buildAndCacheRequests();
     }
-
+    this.creeps.forEach((creep) => {
+      creep.run();
+    });
   }
   /**
    * Are we cached task && spawn requests list out of date
@@ -106,7 +82,7 @@ export class Township {
   areCachedRequestsOutOfDate() {
     if (this.memory.cachedRequests) {
       const gclChanged = this.primaryRoom.gcl !== this.memory.cachedRequests.gcl;
-      const energyCapacityChanged = this.primaryRoom.maxEnergy !== this.memory.cachedRequests.maxEnergy;
+      const energyCapacityChanged = this.primaryRoom.energyCapacity !== this.memory.cachedRequests.maxEnergy;
       return gclChanged || energyCapacityChanged;
 
     } else {
@@ -122,9 +98,9 @@ export class Township {
     this.taskRequests = buildTaskRequestsForTownship(this);
     this.memory.cachedRequests = {
       gcl: this.primaryRoom.gcl,
-      maxEnergy: this.primaryRoom.maxEnergy,
+      maxEnergy: this.primaryRoom.energy,
       spawnRequests: this.spawnRequests,
-      taskRequests:  this.taskRequests,
+      taskRequests:  this.taskRequests
     };
   }
 }

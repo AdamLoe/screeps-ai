@@ -1,6 +1,6 @@
-import {Township} from '../township/township';
-import {JobEnum} from '../enums/job.enum';
-import {TaskEnum} from '../enums/task.enum';
+import { JobEnum } from '../enums/job.enum';
+import { TaskEnum } from '../enums/task.enum';
+import { Township } from '../township/township';
 
 export interface ITaskRequest {
   townshipId: string;
@@ -12,7 +12,7 @@ export interface ITaskRequest {
 }
 
 export function buildTaskRequestsForTownship(
-  township: Township,
+  township: Township
 ): ITaskRequest[] {
   // Mine this shit
   // Pickup this shit from container

@@ -1,13 +1,22 @@
-import {ITownshipMemory} from '../township/township';
+import { ICreepMemory } from '../base-classes/creep';
+import { IRoomMemory } from '../base-classes/room';
+import { ISourceMemory } from '../base-classes/source';
+import { ISpawnMemory } from '../base-classes/spawn';
+import { ITownshipMemory } from '../township/township';
 
 export interface ISourceMemory {
   test: boolean;
 }
 
 export interface ISpacerMemory extends Memory {
-  nameClk: number;
+  creeps: { [spacerId: string]: ICreepMemory };
+  flags: { [spacerId: string]: {}};
+  rooms: { [spacerId: string]: IRoomMemory };
+  powerCreeps: { [spacerId: string]: {}};
+  spawns: { [spacerId: string]: ISpawnMemory };
   sources: { [spacerId: string]: ISourceMemory };
   townships: { [spacerId: string]: ITownshipMemory };
+  nameClk: number;
 }
 
 export class SpacersChoiceMemory {
@@ -24,30 +33,29 @@ export class SpacersChoiceMemory {
    */
   static loadMemory() {
     const memory = SpacersChoiceMemory.get();
-    console.log('got memory', memory);
 
     // If our colony failed for some reason, start over
-    if (this.shouldHardReset()) {
-      memory.rooms = {};
-      memory.spawns = {};
-      memory.sources = {};
-      memory.creeps = {};
-      memory.nameClk = 1;
-
-    } else {
-
-      if (this.shouldInit(memory)) {
-        memory.sources = {};
-        memory.nameClk =  0;
-      }
+    if (this.shouldHardReset() || this.shouldInit(memory)) {
+      const newMemory: ISpacerMemory = {
+        creeps: {},
+        flags: {},
+        rooms: {},
+        powerCreeps: {},
+        spawns: {},
+        sources: {},
+        townships: {},
+        nameClk: 1
+      };
+      Object.assign(memory, newMemory);
     }
   }
 
   /**
-   * Has our memory already been initialized
+   * Has our memory already been initialized.
    */
   static shouldInit(memory: ISpacerMemory) {
-    return !memory.sources;
+    // Memory doesn't start out in memory, so if it is there, we must have initted memory
+    return !memory.sources || !memory.townships || !memory.nameClk;
   }
 
   /**

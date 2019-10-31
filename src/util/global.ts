@@ -1,4 +1,4 @@
-import {SpacersBoard} from '../spacers-board';
+import { SpacersBoard } from '../spacers-board';
 
 export interface ISpacerGlobalData {
   spacerBoard: SpacersBoard;

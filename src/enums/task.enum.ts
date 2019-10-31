@@ -3,5 +3,5 @@ export enum TaskEnum {
   harvest = 'harvest',
   heal = 'heal',
   repair = 'repair',
-  upgradeController = 'upgradeController',
+  upgradeController = 'upgradeController'
 }

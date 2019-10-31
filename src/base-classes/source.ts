@@ -1,20 +1,17 @@
+import { SpacersChoiceMemory } from '../memory/memory';
 
 export interface ISourceMemory {
   distanceToController: number;
-  // FUCK, I CANT SORT BY DISTANCE TO CONTROLLER, BECAUSE THAT IS NOT WHAT MATTERS
 }
 
 export class SpacersChoiceSource extends Source {
 
-  /**
-   *
-   */
+  spacerId: string;
   memory: ISourceMemory;
 
-  /**
-   * Default Constructor
-   */
   constructor(source: Source) {
     super(source.id);
+    this.spacerId = source.id;
+    this.memory = SpacersChoiceMemory.getSourceMemory(this.spacerId);
   }
 }

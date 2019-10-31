@@ -1,6 +1,6 @@
-import {SpacersChoiceMemory} from './memory/memory';
-import {SpacersBoard} from './spacers-board';
-import {getGlobalObject} from './util/global';
+import { SpacersChoiceMemory } from './memory/memory';
+import { SpacersBoard } from './spacers-board';
+import { getGlobalObject } from './util/global';
 
 export function loop() {
 
