@@ -1,9 +1,9 @@
-import { SpacersChoiceCreep } from '../base-classes/creep';
+import { ICreepMemory, SpacersChoiceCreep } from '../base-classes/creep';
 import { SpacersChoiceRoom } from '../base-classes/room';
 import { SpacersChoiceSource } from '../base-classes/source';
 import { SpacersChoiceSpawn } from '../base-classes/spawn';
 import { SpacersChoiceMemory } from '../memory/memory';
-import { buildSpawnRequestsForTownship, ISpawnRequest } from '../planning/spawn-requests';
+import { buildSpawnRequestsForTownship, getSpawnCost, ISpawnRequest } from '../planning/spawn-requests';
 import { buildTaskRequestsForTownship, ITaskRequest } from '../planning/task-requests';
 import { getSpacerId } from '../util/utils';
 
@@ -95,7 +95,8 @@ export class Township {
   getTaskRequests() {
     // Wait a sec, some tasks need to persist
     // So how do I keep harvest tasks persistent
-    this.memory.cachedRequests.taskRequests = buildTaskRequestsForTownship(this);
+    const existingRequests = this.memory.cachedRequests ? this.memory.cachedRequests.taskRequests : [];
+    this.memory.cachedRequests.taskRequests = buildTaskRequestsForTownship(this, existingRequests);
     return this.memory.cachedRequests.taskRequests;
   }
 
@@ -123,8 +124,47 @@ export class Township {
    * Handle of all of the tasks/spawning our townships should be assigning on this tick
    */
   run() {
+    this.assignSpawnRequests();
+    this.assignTaskRequests();
     this.runCreeps();
-    this.runSpawns();
+  }
+
+  /**
+   * Assign our task requests to creeps
+   */
+  assignTaskRequests() {
+    // Get our tasks that haven't been assigned, in order of priority
+    const neededTasks = this.taskRequests
+      .filter((taskRequest) => {
+        if (taskRequest.creepSpacerId) {
+          const taskIsTaken = this.creeps.some((creep) => {
+            return creep.spacerId === taskRequest.creepSpacerId;
+          });
+          return !taskIsTaken;
+
+        } else {
+          return true;
+        }
+      })
+      .sort((t1, t2) => t2.priority - t1.priority);
+
+    // For each creep, see if there is a task we can assign
+    this.creeps.forEach((creep) => {
+      const availCreepTasks = neededTasks.filter((task) => task.job === creep.memory.job);
+
+      const hasAvailTask = availCreepTasks.length > 0;
+      const noAssignedTask = !creep.memory.taskRequests || creep.memory.taskRequests.length === 0;
+      if (hasAvailTask && noAssignedTask) {
+
+        // Assign our task to our creep
+        const newCreepTask = availCreepTasks[0];
+        creep.memory.taskRequests = [newCreepTask];
+        newCreepTask.creepSpacerId = creep.spacerId;
+
+        // Also remove it from list, so we don't assign it to next creep
+        neededTasks.filter((task) => task.spacerId !== newCreepTask.spacerId);
+      }
+    });
   }
 
   runCreeps() {
@@ -134,9 +174,9 @@ export class Township {
   }
 
   /**
-   * On RUN, spawn any pendingRequests
+   * Assign our spawn requests to a spawner if we have spawn requests that need processing
    */
-  runSpawns() {
+  assignSpawnRequests() {
     const neededSpawns = this.spawnRequests
       // Is the creep not alive
       .filter((spawnRequest) => {
@@ -167,20 +207,33 @@ export class Township {
     // For each spawn, see if we need to spawn something
     this.spawns.forEach((spawn) => {
       const notSpawning = !spawn.spawning;
-      const needToSpawn = neededSpawns[0];
+      const needToSpawn = !!neededSpawns[0];
+      // TODO: We need the energy to do it as well
 
       // Can only spawn if we aren't spawning, and there is something to spawn
       if (notSpawning && needToSpawn) {
         const spawnRequest = neededSpawns[0];
+        const haveEnoughEnergy = spawn.energy >= getSpawnCost(spawnRequest);
 
-        const bodyParts = spawnRequest.bodyParts;
-        const spacerId = 'Person:' + getSpacerId();
-        spawnRequest.creepSpacerId = spacerId;
+        // We don't want waste CPU by trying to spawn when we can't
+        if (haveEnoughEnergy) {
+          const bodyParts = spawnRequest.bodyParts;
+          const spacerId = 'Person:' + getSpacerId();
+          spawnRequest.creepSpacerId = spacerId;
 
-        spawn.spawnCreep(
-          bodyParts,
-          spacerId
-        );
+          spawn.spawnCreep(
+            bodyParts,
+            spacerId,
+            {
+              memory: {
+                townshipId: spawnRequest.townshipId,
+                job: spawnRequest.job,
+                taskRequests: spawnRequest.taskRequests
+              } as ICreepMemory
+            }
+          );
+          // TODO: Get rid of this spawn request
+        }
       }
     });
   }
