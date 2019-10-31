@@ -3,8 +3,8 @@ import { JobEnum } from '../enums/job.enum';
 import { TaskPriorityEnum } from '../enums/task-priority.enum';
 import { TaskEnum } from '../enums/task.enum';
 import { Township } from '../township/township';
+import { getSpacerId } from '../util/utils';
 import { ITaskRequest } from './task-requests';
-import {getSpacerId} from "../util/utils";
 
 export interface ISpawnRequest {
   townshipId: string;
@@ -41,7 +41,7 @@ export function buildSpawnRequestsForTownship(
       spawnRequests.push({
         townshipId: township.spacerId,
         job: JobEnum.CARRY,
-        bodyParts: [MOVE, CARRY, CARRY],
+        bodyParts: [MOVE, MOVE, CARRY, CARRY],
         priority: index === 0 ? JobPriorityEnum.FIRST_HAULER : JobPriorityEnum.PRIMARY_ROOM_HAULER
       });
     });

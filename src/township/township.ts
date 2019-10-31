@@ -169,7 +169,7 @@ export class Township {
 
   runCreeps() {
     this.creeps.forEach((creep) => {
-      creep.run();
+      creep.run(this);
     });
   }
 
