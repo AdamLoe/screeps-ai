@@ -24,6 +24,12 @@ export class SpacersBoard implements Partial<Game> {
   structures: { [spacerId: string]: Structure };
   constructionSites: { [spacerId: string]: ConstructionSite };
 
+  /*
+  **********************************************
+  *                    INIT                    *
+  **********************************************
+  */
+
   constructor() {
     this.townships = {};
     this.creeps = Game.creeps as any;
@@ -36,35 +42,27 @@ export class SpacersBoard implements Partial<Game> {
 
   init() {
     const creeps = this.getCreepsList();
-    const sources = this.getSourcesList();
     const spawns = this.getSpawnList();
 
     // TODO: Each room should not be a township
     for (const roomId in this.rooms) {
 
+      // TODO: We might want to generate its own ID eventually? I don't think we will ever store them together tho
+      const spacerId = roomId;
       const primaryRoom = new SpacersChoiceRoom(this.rooms[roomId]);
       const rooms = [primaryRoom];
       const townshipCreeps = creeps.filter((creep) => creep.pos.roomName === primaryRoom.name);
-      const townshipSources = sources.filter((source) => source.pos.roomName === primaryRoom.name);
+      const townshipSources = this.getSourcesForRooms(rooms);
       const townshipSpawns = spawns.filter((spawn) => spawn.pos.roomName === primaryRoom.name);
 
-      const township = new Township({
+      this.townships[spacerId] = new Township({
+        spacerId,
         primaryRoom,
         rooms,
         creeps: townshipCreeps,
         sources: townshipSources,
         spawns: townshipSpawns
       });
-      this.townships[township.spacerId] = township;
-    }
-  }
-
-  /**
-   *
-   */
-  run() {
-    for (const townshipId in this.townships) {
-      this.townships[townshipId].run();
     }
   }
 
@@ -82,7 +80,29 @@ export class SpacersBoard implements Partial<Game> {
       });
   }
 
-  getSourcesList(): SpacersChoiceSource[] {
-    return [];
+  getSourcesForRooms(rooms: SpacersChoiceRoom[]): SpacersChoiceSource[] {
+    const sources: SpacersChoiceSource[] = [];
+    rooms.forEach((room) => {
+      room.find(FIND_SOURCES)
+        .forEach((source) => {
+          sources.push(new SpacersChoiceSource(source));
+        });
+    });
+    return sources;
+  }
+
+  /*
+  **********************************************
+  *                    RUN                     *
+  **********************************************
+  */
+
+  /**
+   *
+   */
+  run() {
+    for (const townshipId in this.townships) {
+      this.townships[townshipId].run();
+    }
   }
 }

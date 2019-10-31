@@ -7,32 +7,30 @@ export interface ISpawnRequest {
   job: JobEnum;
   bodyParts: BodyPartConstant[];
   priority: number;
+  creepSpacerId?: string;
 }
 
 export function buildSpawnRequestsForTownship(
   township: Township
-
 ): ISpawnRequest[] {
-  // Get miners for sources
-  // Get carriers for mines
-  // Carriers and Miners should alternate top priority (want to get as much energy as possible)
-  // Get upgraders (Upgraders should be next, at lower GCLs)
-  // Get builders (Builders should be last, at Lower GCLs)
   const spawnRequests: ISpawnRequest[] = [];
 
-  township.sources.forEach((source, index) => {
-    spawnRequests.push({
-      townshipId: township.spacerId,
-      job: JobEnum.HARVEST,
-      bodyParts: [MOVE, WORK, WORK],
-      priority: index === 0 ? PriorityEnum.FIRST_HARVESTER : PriorityEnum.PRIMARY_ROOM_HARVESTER
+  // Create a hauler and carrier for each source
+  township.sources
+    .forEach((source, index) => {
+      spawnRequests.push({
+        townshipId: township.spacerId,
+        job: JobEnum.HARVEST,
+        bodyParts: [MOVE, WORK, WORK],
+        priority: index === 0 ? PriorityEnum.FIRST_HARVESTER : PriorityEnum.PRIMARY_ROOM_HARVESTER
+      });
+      spawnRequests.push({
+        townshipId: township.spacerId,
+        job: JobEnum.HARVEST,
+        bodyParts: [MOVE, CARRY, CARRY],
+        priority: index === 0 ? PriorityEnum.FIRST_HAULER : PriorityEnum.PRIMARY_ROOM_HAULER
+      });
     });
-    spawnRequests.push({
-      townshipId: township.spacerId,
-      job: JobEnum.HARVEST,
-      bodyParts: [MOVE, CARRY, CARRY],
-      priority: index === 0 ? PriorityEnum.FIRST_HAULER : PriorityEnum.PRIMARY_ROOM_HAULER
-    });
-  });
-  return [];
+
+  return spawnRequests;
 }

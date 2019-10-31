@@ -36,6 +36,7 @@ export class SpacersChoiceMemory {
 
     // If our colony failed for some reason, start over
     if (this.shouldHardReset() || this.shouldInit(memory)) {
+      console.log('resetting memory');
       const newMemory: ISpacerMemory = {
         creeps: {},
         flags: {},

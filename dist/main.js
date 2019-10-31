@@ -16,6 +16,7 @@ class SpacersChoiceMemory {
         const memory = SpacersChoiceMemory.get();
         // If our colony failed for some reason, start over
         if (this.shouldHardReset() || this.shouldInit(memory)) {
+            console.log('resetting memory');
             const newMemory = {
                 creeps: {},
                 flags: {},
@@ -97,6 +98,14 @@ class SpacersChoiceRoom extends Room {
     get energyCapacity() { return this.energyCapacityAvailable; }
 }
 
+class SpacersChoiceSource extends Source {
+    constructor(source) {
+        super(source.id);
+        this.spacerId = source.id;
+        this.memory = SpacersChoiceMemory.getSourceMemory(this.spacerId);
+    }
+}
+
 class SpacersChoiceSpawn extends Spawn {
     /**
      * Default Constructor. Sets all of the base spawn properties
@@ -128,13 +137,10 @@ var PriorityEnum;
 })(PriorityEnum || (PriorityEnum = {}));
 
 function buildSpawnRequestsForTownship(township) {
-    // Get miners for sources
-    // Get carriers for mines
-    // Carriers and Miners should alternate top priority (want to get as much energy as possible)
-    // Get upgraders (Upgraders should be next, at lower GCLs)
-    // Get builders (Builders should be last, at Lower GCLs)
     const spawnRequests = [];
-    township.sources.forEach((source, index) => {
+    // Create a hauler and carrier for each source
+    township.sources
+        .forEach((source, index) => {
         spawnRequests.push({
             townshipId: township.spacerId,
             job: JobEnum.HARVEST,
@@ -148,7 +154,7 @@ function buildSpawnRequestsForTownship(township) {
             priority: index === 0 ? PriorityEnum.FIRST_HAULER : PriorityEnum.PRIMARY_ROOM_HAULER
         });
     });
-    return [];
+    return spawnRequests;
 }
 
 function buildTaskRequestsForTownship(township) {
@@ -172,30 +178,34 @@ function getSpacerId() {
  * Townships handle spawning citizens and delegating tasks based on objects inside of the room
  */
 class Township {
+    /*
+    **********************************************
+    *                    INIT                    *
+    **********************************************
+    */
     /**
      * Default Constructor. Load our data from our room/creeps
      */
     constructor(data) {
         const { spacerId, primaryRoom, rooms, creeps, sources, spawns } = data;
-        // TODO: We are using these IDs in spawn/task so we can't be generating on every tick
-        this.spacerId = spacerId || getSpacerId();
+        this.spacerId = spacerId;
         this.primaryRoom = primaryRoom;
         this.rooms = rooms;
         this.creeps = creeps;
         this.sources = sources;
         this.spawns = spawns;
         this.memory = SpacersChoiceMemory.getTownshipMemory(this.spacerId);
-    }
-    /**
-     * Handle of all of the tasks/spawning our townships should be assigning on this tick
-     */
-    run() {
+        if (!this.memory.primaryRoomId) {
+            this.memory.primaryRoomId = primaryRoom.spacerId;
+            this.memory.rooms = rooms.map((room) => room.spacerId);
+        }
         if (this.areCachedRequestsOutOfDate()) {
             this.buildAndCacheRequests();
         }
-        this.creeps.forEach((creep) => {
-            creep.run();
-        });
+        else {
+            this.spawnRequests = this.memory.cachedRequests.spawnRequests;
+            this.taskRequests = this.memory.cachedRequests.taskRequests;
+        }
     }
     /**
      * Are we cached task && spawn requests list out of date
@@ -223,12 +233,74 @@ class Township {
             taskRequests: this.taskRequests
         };
     }
+    /*
+    **********************************************
+    *                    RUN                     *
+    **********************************************
+    */
+    /**
+     * Handle of all of the tasks/spawning our townships should be assigning on this tick
+     */
+    run() {
+        this.runCreeps();
+        this.runSpawns();
+    }
+    runCreeps() {
+        this.creeps.forEach((creep) => {
+            creep.run();
+        });
+    }
+    runSpawns() {
+        const neededSpawns = this.spawnRequests
+            // Is the creep not alive
+            .filter((spawnRequest) => {
+            if (spawnRequest.creepSpacerId) {
+                const creepIsAlive = this.creeps.some((creep) => {
+                    return creep.spacerId === spawnRequest.creepSpacerId;
+                });
+                return !creepIsAlive;
+            }
+            else {
+                return true;
+            }
+        })
+            // Is the creep not being spawned right now
+            .filter((spawnRequest) => {
+            const spawningNow = this.spawns.some((spawn) => {
+                if (spawn.spawning) {
+                    return spawn.spawning.name === spawnRequest.creepSpacerId;
+                }
+                else {
+                    return false;
+                }
+            });
+            return !spawningNow;
+        })
+            // Sort by priority
+            .sort((s1, s2) => s2.priority - s1.priority);
+        this.spawns.forEach((spawn) => {
+            const notSpawning = !spawn.spawning;
+            const needToSpawn = neededSpawns[0];
+            if (notSpawning && needToSpawn) {
+                const spawnRequest = neededSpawns[0];
+                const bodyParts = spawnRequest.bodyParts;
+                const spacerId = 'Person:' + getSpacerId();
+                spawnRequest.creepSpacerId = spacerId;
+                spawn.spawnCreep(bodyParts, spacerId);
+            }
+        });
+    }
 }
 
 /**
  * The spacers board simply handles each of our townships by passing them their rooms and citizen data.
  */
 class SpacersBoard {
+    /*
+    **********************************************
+    *                    INIT                    *
+    **********************************************
+    */
     constructor() {
         this.townships = {};
         this.creeps = Game.creeps;
@@ -240,31 +312,24 @@ class SpacersBoard {
     }
     init() {
         const creeps = this.getCreepsList();
-        const sources = this.getSourcesList();
         const spawns = this.getSpawnList();
         // TODO: Each room should not be a township
         for (const roomId in this.rooms) {
+            // TODO: We might want to generate its own ID eventually? I don't think we will ever store them together tho
+            const spacerId = roomId;
             const primaryRoom = new SpacersChoiceRoom(this.rooms[roomId]);
             const rooms = [primaryRoom];
             const townshipCreeps = creeps.filter((creep) => creep.pos.roomName === primaryRoom.name);
-            const townshipSources = sources.filter((source) => source.pos.roomName === primaryRoom.name);
+            const townshipSources = this.getSourcesForRooms(rooms);
             const townshipSpawns = spawns.filter((spawn) => spawn.pos.roomName === primaryRoom.name);
-            const township = new Township({
+            this.townships[spacerId] = new Township({
+                spacerId,
                 primaryRoom,
                 rooms,
                 creeps: townshipCreeps,
                 sources: townshipSources,
                 spawns: townshipSpawns
             });
-            this.townships[township.spacerId] = township;
-        }
-    }
-    /**
-     *
-     */
-    run() {
-        for (const townshipId in this.townships) {
-            this.townships[townshipId].run();
         }
     }
     getCreepsList() {
@@ -274,15 +339,33 @@ class SpacersBoard {
         });
     }
     getSpawnList() {
-        console.log('spawns', this.spawns.length, this.spawns[0]);
         return Object.keys(this.spawns)
             .map((spacerId) => {
-            console.log('spawn id', spacerId);
             return new SpacersChoiceSpawn(this.spawns[spacerId]);
         });
     }
-    getSourcesList() {
-        return [];
+    getSourcesForRooms(rooms) {
+        const sources = [];
+        rooms.forEach((room) => {
+            room.find(FIND_SOURCES)
+                .forEach((source) => {
+                sources.push(new SpacersChoiceSource(source));
+            });
+        });
+        return sources;
+    }
+    /*
+    **********************************************
+    *                    RUN                     *
+    **********************************************
+    */
+    /**
+     *
+     */
+    run() {
+        for (const townshipId in this.townships) {
+            this.townships[townshipId].run();
+        }
     }
 }
 

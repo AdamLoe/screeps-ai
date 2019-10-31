@@ -1,12 +1,11 @@
+import { SpacersChoiceCreep } from '../base-classes/creep';
 import { SpacersChoiceRoom } from '../base-classes/room';
 import { SpacersChoiceSource } from '../base-classes/source';
 import { SpacersChoiceSpawn } from '../base-classes/spawn';
-import { SpacersChoiceCitizen } from '../citizen/citizen';
 import { SpacersChoiceMemory } from '../memory/memory';
 import { buildSpawnRequestsForTownship, ISpawnRequest } from '../planning/spawn-requests';
 import { buildTaskRequestsForTownship, ITaskRequest } from '../planning/task-requests';
 import { getSpacerId } from '../util/utils';
-import {SpacersChoiceCreep} from "../base-classes/creep";
 
 export interface ITownshipCachedRequests {
   gcl: number;
@@ -16,7 +15,8 @@ export interface ITownshipCachedRequests {
 }
 
 export interface ITownshipMemory {
-  cachedRequests?: ITownshipCachedRequests;
+  cachedRequests: ITownshipCachedRequests;
+  primaryRoomId: string;
   rooms: string[];
 }
 
@@ -38,11 +38,17 @@ export class Township {
   spawnRequests: ISpawnRequest[];
   taskRequests: ITaskRequest[];
 
+  /*
+  **********************************************
+  *                    INIT                    *
+  **********************************************
+  */
+
   /**
    * Default Constructor. Load our data from our room/creeps
    */
   constructor(data: {
-    spacerId?: string,
+    spacerId: string,
     primaryRoom: SpacersChoiceRoom,
     rooms: SpacersChoiceRoom[],
     creeps: SpacersChoiceCreep[],
@@ -51,37 +57,34 @@ export class Township {
   }) {
     const { spacerId, primaryRoom, rooms, creeps, sources, spawns } = data;
 
-    // TODO: We are using these IDs in spawn/task so we can't be generating on every tick
-    this.spacerId = spacerId || getSpacerId();
+    this.spacerId = spacerId;
     this.primaryRoom = primaryRoom;
     this.rooms = rooms;
     this.creeps = creeps;
     this.sources = sources;
     this.spawns = spawns;
     this.memory = SpacersChoiceMemory.getTownshipMemory(this.spacerId);
-    console.log(JSON.stringify(rooms));
-    console.log(JSON.stringify(creeps));
-    console.log(JSON.stringify(sources));
-    console.log(JSON.stringify(spawns));
-  }
 
-  /**
-   * Handle of all of the tasks/spawning our townships should be assigning on this tick
-   */
-  run() {
+    if (!this.memory.primaryRoomId) {
+      this.memory.primaryRoomId = primaryRoom.spacerId;
+      this.memory.rooms = rooms.map((room) => room.spacerId);
+    }
+
     if (this.areCachedRequestsOutOfDate()) {
       this.buildAndCacheRequests();
+    } else {
+      this.spawnRequests = this.memory.cachedRequests.spawnRequests;
+      this.taskRequests = this.memory.cachedRequests.taskRequests;
     }
-    this.creeps.forEach((creep) => {
-      creep.run();
-    });
   }
+
+
   /**
    * Are we cached task && spawn requests list out of date
    */
   areCachedRequestsOutOfDate() {
     if (this.memory.cachedRequests) {
-      const gclChanged = this.primaryRoom.gcl !== this.memory.cachedRequests.gcl;
+      const gclChanged = this.primaryRoom.gcl !== (this.memory.cachedRequests as any).gcl;
       const energyCapacityChanged = this.primaryRoom.energyCapacity !== this.memory.cachedRequests.maxEnergy;
       return gclChanged || energyCapacityChanged;
 
@@ -102,5 +105,74 @@ export class Township {
       spawnRequests: this.spawnRequests,
       taskRequests:  this.taskRequests
     };
+  }
+
+  /*
+  **********************************************
+  *                    RUN                     *
+  **********************************************
+  */
+
+  /**
+   * Handle of all of the tasks/spawning our townships should be assigning on this tick
+   */
+  run() {
+    this.runCreeps();
+    this.runSpawns();
+  }
+
+  runCreeps() {
+
+    this.creeps.forEach((creep) => {
+      creep.run();
+    });
+
+  }
+
+  runSpawns() {
+    const neededSpawns = this.spawnRequests
+      // Is the creep not alive
+      .filter((spawnRequest) => {
+        if (spawnRequest.creepSpacerId) {
+          const creepIsAlive = this.creeps.some((creep) => {
+            return creep.spacerId === spawnRequest.creepSpacerId;
+          });
+          return !creepIsAlive;
+
+        } else {
+          return true;
+        }
+      })
+      // Is the creep not being spawned right now
+      .filter((spawnRequest) => {
+        const spawningNow = this.spawns.some((spawn) => {
+          if (spawn.spawning) {
+            return spawn.spawning.name === spawnRequest.creepSpacerId;
+          } else {
+            return false;
+          }
+        });
+        return !spawningNow;
+      })
+      // Sort by priority
+      .sort((s1, s2) => s2.priority - s1.priority);
+
+    this.spawns.forEach((spawn) => {
+      const notSpawning = !spawn.spawning;
+      const needToSpawn = neededSpawns[0];
+
+      if (notSpawning && needToSpawn) {
+        const spawnRequest = neededSpawns[0];
+
+        const bodyParts = spawnRequest.bodyParts;
+        const spacerId = 'Person:' + getSpacerId();
+        spawnRequest.creepSpacerId = spacerId;
+
+        spawn.spawnCreep(
+          bodyParts,
+          spacerId
+        );
+      }
+    });
   }
 }
