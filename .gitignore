@@ -7,7 +7,7 @@
 npm-debug.log*
 npm-debug.log
 .gitattributes
-Gruntfile.js
+.screeps.json
 
 ~/package-lock.json
 
