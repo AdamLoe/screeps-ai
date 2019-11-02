@@ -1,6 +1,7 @@
 import { SpacersChoiceMemory } from './memory/memory';
 import { SpacersBoard } from './spacers-board';
 import { getGlobalObject } from './util/global';
+import { setupScripts } from './scripts/scripts';
 
 export function loop() {
 
@@ -21,3 +22,5 @@ export function loop() {
    */
   global.spacerBoard.run();
 }
+
+setupScripts();

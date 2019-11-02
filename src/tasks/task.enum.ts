@@ -3,7 +3,8 @@ export enum TaskEnum {
   HARVEST = 'harvest',
   PICKUP = 'carry',
   DROP_OFF = 'dropoff',
+  GIVE_TO = 'giveto',
   HEAL = 'heal',
   REPAIR = 'repair',
-  UPGRADE_CONTROLLER = 'upgradeController'
+  UPGRADE = 'upgradeController'
 }

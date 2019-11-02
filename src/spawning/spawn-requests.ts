@@ -1,10 +1,6 @@
-import { JobPriorityEnum } from '../enums/job-priority.enum';
-import { JobEnum } from '../enums/job.enum';
-import { TaskPriorityEnum } from '../enums/task-priority.enum';
-import { TaskEnum } from '../enums/task.enum';
 import { Township } from '../township/township';
-import { getSpacerId } from '../util/utils';
-import { ITaskRequest } from './task-requests';
+import { JobPriorityEnum } from './job-priority.enum';
+import { JobEnum } from './job.enum';
 
 export interface ISpawnRequest {
   townshipId: string;
@@ -12,7 +8,6 @@ export interface ISpawnRequest {
   bodyParts: BodyPartConstant[];
   priority: JobPriorityEnum;
   creepSpacerId?: string;
-  taskRequests?: ITaskRequest[];
 }
 
 export function buildSpawnRequestsForTownship(
@@ -20,6 +15,11 @@ export function buildSpawnRequestsForTownship(
 ): ISpawnRequest[] {
   const spawnRequests: ISpawnRequest[] = [];
 
+  // TODO: Need to build cost analyzers for these
+  /**
+   * TODO: THOUGHHHHH, it might not actually be TOO worth it TBH
+   * TODO: This game is also about GCL8 Anyways TBH
+   */
   // Create a hauler and carrier for each source
   township.sources
     .forEach((source, index) => {
@@ -27,24 +27,26 @@ export function buildSpawnRequestsForTownship(
         townshipId: township.spacerId,
         job: JobEnum.HARVEST,
         bodyParts: [MOVE, WORK, WORK],
-        priority: index === 0 ? JobPriorityEnum.FIRST_HARVESTER : JobPriorityEnum.PRIMARY_ROOM_HARVESTER,
-        taskRequests: [{
-          spacerId: getSpacerId(),
-          townshipId: township.spacerId,
-          job: JobEnum.HARVEST,
-          task: TaskEnum.HARVEST,
-          posX: source.pos.x,
-          posY: source.pos.y,
-          priority: TaskPriorityEnum.HARVEST
-        }]
+        priority: index === 0 ?
+            JobPriorityEnum.FIRST_HARVESTER :
+            JobPriorityEnum.PRIMARY_ROOM_HARVESTER + index
       });
       spawnRequests.push({
         townshipId: township.spacerId,
         job: JobEnum.CARRY,
         bodyParts: [MOVE, MOVE, CARRY, CARRY],
-        priority: index === 0 ? JobPriorityEnum.FIRST_HAULER : JobPriorityEnum.PRIMARY_ROOM_HAULER
+        priority: index === 0 ?
+            JobPriorityEnum.FIRST_HAULER :
+            JobPriorityEnum.PRIMARY_ROOM_HAULER + index
       });
     });
+
+  spawnRequests.push({
+    townshipId: township.spacerId,
+    job: JobEnum.UPGRADE,
+    bodyParts: [MOVE, CARRY, WORK, WORK],
+    priority: JobPriorityEnum.FIRST_UPGRADER
+  });
 
   return spawnRequests;
 }

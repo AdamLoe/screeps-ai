@@ -3,15 +3,14 @@ import { SpacersChoiceRoom } from '../base-classes/room';
 import { SpacersChoiceSource } from '../base-classes/source';
 import { SpacersChoiceSpawn } from '../base-classes/spawn';
 import { SpacersChoiceMemory } from '../memory/memory';
-import { buildSpawnRequestsForTownship, getSpawnCost, ISpawnRequest } from '../planning/spawn-requests';
-import { buildTaskRequestsForTownship, ITaskRequest } from '../planning/task-requests';
+import { buildSpawnRequestsForTownship, getSpawnCost, ISpawnRequest } from '../spawning/spawn-requests';
+import { buildTaskRequestsForTownship, ITaskRequest } from '../tasks/task-requests';
 import { getSpacerId } from '../util/utils';
 
 export interface ITownshipCachedRequests {
   gcl: number;
   maxEnergy: number;
   spawnRequests: ISpawnRequest[];
-  taskRequests: ITaskRequest[];
 }
 
 export interface ITownshipMemory {
@@ -30,6 +29,7 @@ export class Township {
    */
   spacerId: string;
   primaryRoom: SpacersChoiceRoom;
+  controller: StructureController;
   rooms: SpacersChoiceRoom[];
   creeps: SpacersChoiceCreep[];
   sources: SpacersChoiceSource[];
@@ -59,19 +59,26 @@ export class Township {
 
     this.spacerId = spacerId;
     this.primaryRoom = primaryRoom;
+    this.controller = primaryRoom.controller as StructureController;
     this.rooms = rooms;
     this.creeps = creeps;
     this.sources = sources;
     this.spawns = spawns;
     this.memory = SpacersChoiceMemory.getTownshipMemory(this.spacerId);
 
-    if (!this.memory.primaryRoomId) {
-      this.memory.primaryRoomId = primaryRoom.spacerId;
-      this.memory.rooms = rooms.map((room) => room.spacerId);
+    // Update our memory data
+    this.memory.rooms = rooms.map((room) => room.spacerId);
+
+    // Controllers can be null for no reason :(
+    if (!this.controller) {
+      const roomControllers = primaryRoom
+          .find(FIND_STRUCTURES)
+          .filter((struct) => struct.structureType === STRUCTURE_CONTROLLER);
+      this.controller = roomControllers[0] as StructureController;
     }
 
     this.spawnRequests = this.getSpawnRequests();
-    this.taskRequests = this.getTaskRequests();
+    this.taskRequests = buildTaskRequestsForTownship(this);
   }
 
   /**
@@ -82,22 +89,10 @@ export class Township {
       this.memory.cachedRequests = {
         gcl: this.primaryRoom.gcl,
         maxEnergy: this.primaryRoom.energy,
-        spawnRequests: buildSpawnRequestsForTownship(this),
-        taskRequests: []
+        spawnRequests: buildSpawnRequestsForTownship(this)
       };
     }
     return this.memory.cachedRequests.spawnRequests;
-  }
-
-  /**
-   * Get our task requests. Build new task list of every tick
-   */
-  getTaskRequests() {
-    // Wait a sec, some tasks need to persist
-    // So how do I keep harvest tasks persistent
-    const existingRequests = this.memory.cachedRequests ? this.memory.cachedRequests.taskRequests : [];
-    this.memory.cachedRequests.taskRequests = buildTaskRequestsForTownship(this, existingRequests);
-    return this.memory.cachedRequests.taskRequests;
   }
 
   /**
@@ -135,17 +130,7 @@ export class Township {
   assignTaskRequests() {
     // Get our tasks that haven't been assigned, in order of priority
     const neededTasks = this.taskRequests
-      .filter((taskRequest) => {
-        if (taskRequest.creepSpacerId) {
-          const taskIsTaken = this.creeps.some((creep) => {
-            return creep.spacerId === taskRequest.creepSpacerId;
-          });
-          return !taskIsTaken;
-
-        } else {
-          return true;
-        }
-      })
+      .filter((taskRequest) => !taskRequest.creepSpacerId)
       .sort((t1, t2) => t2.priority - t1.priority);
 
     // For each creep, see if there is a task we can assign
@@ -159,6 +144,7 @@ export class Township {
         // Assign our task to our creep
         const newCreepTask = availCreepTasks[0];
         creep.memory.taskRequests = [newCreepTask];
+        creep.memory.taskMemory = {};
         newCreepTask.creepSpacerId = creep.spacerId;
 
         // Also remove it from list, so we don't assign it to next creep
@@ -228,7 +214,8 @@ export class Township {
               memory: {
                 townshipId: spawnRequest.townshipId,
                 job: spawnRequest.job,
-                taskRequests: spawnRequest.taskRequests
+                taskRequests: [],
+                taskMemory: {}
               } as ICreepMemory
             }
           );

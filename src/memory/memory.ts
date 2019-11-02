@@ -2,6 +2,8 @@ import { ICreepMemory } from '../base-classes/creep';
 import { IRoomMemory } from '../base-classes/room';
 import { ISourceMemory } from '../base-classes/source';
 import { ISpawnMemory } from '../base-classes/spawn';
+import { ISpawnRequest } from '../spawning/spawn-requests';
+import { ITaskRequest } from '../tasks/task-requests';
 import { ITownshipMemory } from '../township/township';
 
 export interface ISourceMemory {
@@ -9,14 +11,20 @@ export interface ISourceMemory {
 }
 
 export interface ISpacerMemory extends Memory {
+
+  // Default Objects
   creeps: { [spacerId: string]: ICreepMemory };
   flags: { [spacerId: string]: {}};
   rooms: { [spacerId: string]: IRoomMemory };
   powerCreeps: { [spacerId: string]: {}};
   spawns: { [spacerId: string]: ISpawnMemory };
-  sources: { [spacerId: string]: ISourceMemory };
-  townships: { [spacerId: string]: ITownshipMemory };
+
+  // Added Objects
   nameClk: number;
+  sources: { [spacerId: string]: ISourceMemory };
+  spawnRequests: { [spacerId: string]: ISpawnRequest };
+  taskRequests: { [spacerId: string]: ITaskRequest };
+  townships: { [spacerId: string]: ITownshipMemory };
 }
 
 export class SpacersChoiceMemory {
@@ -36,16 +44,21 @@ export class SpacersChoiceMemory {
 
     // If our colony failed for some reason, start over
     if (this.shouldHardReset() || this.shouldInit(memory)) {
-      console.log('resetting memory');
+      console.log('-----------------------------------');
+      console.log('-------// resetting memory //------');
+      console.log('-----------------------------------');
       const newMemory: ISpacerMemory = {
         creeps: {},
         flags: {},
         rooms: {},
         powerCreeps: {},
         spawns: {},
+
+        nameClk: 1,
         sources: {},
-        townships: {},
-        nameClk: 1
+        spawnRequests: {},
+        taskRequests: {},
+        townships: {}
       };
       Object.assign(memory, newMemory);
     }
@@ -56,7 +69,7 @@ export class SpacersChoiceMemory {
    */
   static shouldInit(memory: ISpacerMemory) {
     // Memory doesn't start out in memory, so if it is there, we must have initted memory
-    return !memory.sources || !memory.townships || !memory.nameClk;
+    return !memory.sources || !memory.townships || !memory.nameClk || !memory.taskRequests || !memory.spawnRequests;
   }
 
   /**
