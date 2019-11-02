@@ -1,4 +1,4 @@
-import { SpacersChoiceMemory } from '../memory/memory';
+import { SpacersChoiceMemory } from '../memory';
 
 export interface ISourceMemory {
   distanceToController: number;

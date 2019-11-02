@@ -1,4 +1,4 @@
-import { SpacersChoiceMemory } from '../memory/memory';
+import { SpacersChoiceMemory } from './memory';
 
 function clearTasks() {
     const memory = SpacersChoiceMemory.get();

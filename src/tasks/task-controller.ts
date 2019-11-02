@@ -1,5 +1,5 @@
-import { SpacersChoiceMemory } from '../memory/memory';
-import { ITaskRequest } from './task-requests';
+import { SpacersChoiceMemory } from '../memory';
+import { ITaskRequest } from './task-request.interface';
 
 
 export class TaskController {

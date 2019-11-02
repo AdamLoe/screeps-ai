@@ -1,11 +1,12 @@
-import { ICreepMemory, SpacersChoiceCreep } from '../base-classes/creep';
-import { SpacersChoiceRoom } from '../base-classes/room';
-import { SpacersChoiceSource } from '../base-classes/source';
-import { SpacersChoiceSpawn } from '../base-classes/spawn';
-import { SpacersChoiceMemory } from '../memory/memory';
-import { buildSpawnRequestsForTownship, getSpawnCost, ISpawnRequest } from '../spawning/spawn-requests';
-import { buildTaskRequestsForTownship, ITaskRequest } from '../tasks/task-requests';
-import { getSpacerId } from '../util/utils';
+import { SpacersChoiceRoom } from './base-classes/room';
+import { SpacersChoiceSource } from './base-classes/source';
+import { SpacersChoiceSpawn } from './base-classes/spawn';
+import { ICreepMemory, SpacersChoiceCreep } from './creep';
+import { SpacersChoiceMemory } from './memory';
+import { buildSpawnRequestsForTownship, getSpawnCost, ISpawnRequest } from './spawning/spawn-requests';
+import { ITaskRequest } from './tasks/task-request.interface';
+import { assignTaskRequestsForTownship, buildTaskRequestsForTownship } from './tasks/task-requests';
+import { getSpacerId } from './util/utils';
 
 export interface ITownshipCachedRequests {
   gcl: number;
@@ -36,7 +37,6 @@ export class Township {
   spawns: SpacersChoiceSpawn[];
   memory: ITownshipMemory;
   spawnRequests: ISpawnRequest[];
-  taskRequests: ITaskRequest[];
 
   /*
   **********************************************
@@ -78,7 +78,6 @@ export class Township {
     }
 
     this.spawnRequests = this.getSpawnRequests();
-    this.taskRequests = buildTaskRequestsForTownship(this);
   }
 
   /**
@@ -120,37 +119,9 @@ export class Township {
    */
   run() {
     this.assignSpawnRequests();
-    this.assignTaskRequests();
+    const taskRequests = buildTaskRequestsForTownship(this);
+    assignTaskRequestsForTownship(this, taskRequests);
     this.runCreeps();
-  }
-
-  /**
-   * Assign our task requests to creeps
-   */
-  assignTaskRequests() {
-    // Get our tasks that haven't been assigned, in order of priority
-    const neededTasks = this.taskRequests
-      .filter((taskRequest) => !taskRequest.creepSpacerId)
-      .sort((t1, t2) => t2.priority - t1.priority);
-
-    // For each creep, see if there is a task we can assign
-    this.creeps.forEach((creep) => {
-      const availCreepTasks = neededTasks.filter((task) => task.job === creep.memory.job);
-
-      const hasAvailTask = availCreepTasks.length > 0;
-      const noAssignedTask = !creep.memory.taskRequests || creep.memory.taskRequests.length === 0;
-      if (hasAvailTask && noAssignedTask) {
-
-        // Assign our task to our creep
-        const newCreepTask = availCreepTasks[0];
-        creep.memory.taskRequests = [newCreepTask];
-        creep.memory.taskMemory = {};
-        newCreepTask.creepSpacerId = creep.spacerId;
-
-        // Also remove it from list, so we don't assign it to next creep
-        neededTasks.filter((task) => task.spacerId !== newCreepTask.spacerId);
-      }
-    });
   }
 
   runCreeps() {

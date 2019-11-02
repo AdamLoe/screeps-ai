@@ -1,10 +1,10 @@
-import { ICreepMemory } from '../base-classes/creep';
-import { IRoomMemory } from '../base-classes/room';
-import { ISourceMemory } from '../base-classes/source';
-import { ISpawnMemory } from '../base-classes/spawn';
-import { ISpawnRequest } from '../spawning/spawn-requests';
-import { ITaskRequest } from '../tasks/task-requests';
-import { ITownshipMemory } from '../township/township';
+import { IRoomMemory } from './base-classes/room';
+import { ISourceMemory } from './base-classes/source';
+import { ISpawnMemory } from './base-classes/spawn';
+import { ICreepMemory } from './creep';
+import { ISpawnRequest } from './spawning/spawn-requests';
+import { ITaskRequest } from './tasks/task-request.interface';
+import { ITownshipMemory } from './township';
 
 export interface ISourceMemory {
   test: boolean;

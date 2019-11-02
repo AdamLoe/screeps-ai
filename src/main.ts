@@ -1,7 +1,7 @@
-import { SpacersChoiceMemory } from './memory/memory';
+import { SpacersChoiceMemory } from './memory';
+import { setupScripts } from './scripts';
 import { SpacersBoard } from './spacers-board';
 import { getGlobalObject } from './util/global';
-import { setupScripts } from './scripts/scripts';
 
 export function loop() {
 

@@ -1,23 +1,13 @@
-import { SpacersChoiceSource } from '../base-classes/source';
-import { SpacersChoiceMemory } from '../memory/memory';
-import { JobEnum } from '../spawning/job.enum';
-import { Township } from '../township/township';
-import { getSpacerId, getStructureFreeRoom, transferrableStructureTypes } from '../util/utils';
+import { SpacersChoiceMemory } from '../memory';
+import { Township } from '../township';
+import { HarvestTask } from './list/HarvestTask';
+import { PickupTask } from './list/PickupTask';
+import { TransferTask } from './list/TransferTask';
+import { UpgradeTask } from './list/UpgradeTask';
 import { TaskController } from './task-controller';
-import { getDroppedResourcePriority, TaskPriorityEnum } from './task-priority.enum';
-import { TaskEnum } from './task.enum';
-
-export interface ITaskRequest {
-  spacerId: string;
-  targetSpacerId: string;
-  townshipId: string;
-  job: JobEnum;
-  task: TaskEnum;
-  posX: number;
-  posY: number;
-  priority: TaskPriorityEnum;
-  creepSpacerId?: string;
-}
+import { ITaskRequest } from './task-request.interface';
+import { BuildTask } from './list/BuildTask';
+import { TaskConfig } from './task.config';
 
 export function buildTaskRequestsForTownship(
   township: Township
@@ -30,22 +20,25 @@ export function buildTaskRequestsForTownship(
 
   // TODO: This should be a global cleanup that lives in another file
   // First start by making sure our existing requests are valid
-  townshipTasks.forEach((task) => {
+  const taskRequests = townshipTasks.filter((task) => {
     if (task.creepSpacerId) {
       const badRef = township.creeps.some((creep) => {
         return creep.spacerId === task.creepSpacerId;
       });
       if (badRef) {
         TaskController.removeTask(task.spacerId);
+        return false;
       }
     }
+    return true;
   });
 
   const newTaskRequests: ITaskRequest[] = [
-    ...getDroppedResourceTasks(township),
-    ...getTransferTasks(township),
-    ...getHarvestTasks(township),
-    ...getUpgradeTasks(township)
+    ...HarvestTask.buildRequests(township),
+    ...PickupTask.buildRequests(township),
+    ...TransferTask.buildRequests(township),
+    ...UpgradeTask.buildRequests(township),
+    ...BuildTask.buildRequests(township)
   ];
 
   newTaskRequests.forEach((newTask) => {
@@ -61,89 +54,39 @@ export function buildTaskRequestsForTownship(
     } else {
       // Otherwise add a new task
       TaskController.addTask(newTask);
+      taskRequests.push(newTask);
     }
   });
 
   return newTaskRequests;
 }
 
-function getHarvestTasks(township: Township): ITaskRequest[] {
+export function assignTaskRequestsForTownship(
+  township: Township,
+  taskRequests: ITaskRequest[]
+) {
 
-  return township.sources.map((source: SpacersChoiceSource) => {
-    return {
-      spacerId: getSpacerId(),
-      targetSpacerId: source.spacerId,
-      townshipId: township.spacerId,
-      job: JobEnum.HARVEST,
-      task: TaskEnum.HARVEST,
-      posX: source.pos.x,
-      posY: source.pos.y,
-      priority: TaskPriorityEnum.HARVEST
-    };
+  // Get our tasks that haven't been assigned, in order of priority
+  const neededTasks = taskRequests
+    .filter((taskRequest) => !taskRequest.creepSpacerId)
+    .sort((t1, t2) => t2.priority - t1.priority);
+
+  // For each creep, see if there is a task we can assign
+  township.creeps.forEach((creep) => {
+    const availCreepTasks = neededTasks.filter((task) => TaskConfig.canTakeTask(creep, task));
+
+    const hasAvailTask = availCreepTasks.length > 0;
+    const noAssignedTask = !creep.memory.taskRequests || creep.memory.taskRequests.length === 0;
+    if (hasAvailTask && noAssignedTask) {
+
+      // Assign our task to our creep
+      const newCreepTask = availCreepTasks[0];
+      creep.memory.taskRequests = [newCreepTask];
+      creep.memory.taskMemory = {};
+      newCreepTask.creepSpacerId = creep.spacerId;
+
+      // Also remove it from list, so we don't assign it to next creep
+      neededTasks.filter((task) => task.spacerId !== newCreepTask.spacerId);
+    }
   });
-}
-
-function getDroppedResourceTasks(township: Township): ITaskRequest[] {
-  const droppedResources: Resource[] = [];
-  township.rooms.forEach((room) => {
-    const droppedResourcesInRoom = room.find(FIND_DROPPED_RESOURCES);
-    droppedResources.push(...droppedResourcesInRoom);
-  });
-
-  return droppedResources.map((droppedResource) => {
-    // Generate an ID that can be regenerated every tick (since resources dont have ID)
-    const resourceId = 'Resource:' +
-      droppedResource.pos.x.toString() + ':' +
-      droppedResource.pos.y.toString();
-
-    return {
-      spacerId: getSpacerId(),
-      targetSpacerId: resourceId,
-      townshipId: township.spacerId,
-      job: JobEnum.CARRY,
-      task: TaskEnum.PICKUP,
-      posX: droppedResource.pos.x,
-      posY: droppedResource.pos.y,
-      priority: getDroppedResourcePriority(droppedResource.resourceType)
-    };
-  });
-}
-
-function getTransferTasks(township: Township): ITaskRequest[] {
-  const structures: Structure[] = [];
-  township.rooms.forEach((room) => {
-    const structuresInRoom = room.find(FIND_STRUCTURES);
-    structures.push(...structuresInRoom);
-  });
-
-  const availableStructures = structures
-    .filter((structure) => transferrableStructureTypes.includes(structure.structureType))
-    .filter((structure) => getStructureFreeRoom(structure) > 0);
-
-  return availableStructures.map((structure) => {
-    return {
-      spacerId: getSpacerId(),
-      targetSpacerId: structure.id,
-      townshipId: township.spacerId,
-      job: JobEnum.CARRY,
-      task: TaskEnum.DROP_OFF,
-      posX: structure.pos.x,
-      posY: structure.pos.y,
-      priority: TaskPriorityEnum.DROP_OFF_RESOURCES
-    };
-  });
-}
-
-function getUpgradeTasks(township: Township): ITaskRequest[] {
-
-  return [{
-    spacerId: getSpacerId(),
-    targetSpacerId: township.controller.id,
-    townshipId: township.spacerId,
-    job: JobEnum.UPGRADE,
-    task: TaskEnum.UPGRADE,
-    posX: township.controller.pos.x,
-    posY: township.controller.pos.y,
-    priority: TaskPriorityEnum.UPGRADE_CONTROLLER
-  }];
 }

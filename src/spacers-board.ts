@@ -1,8 +1,8 @@
-import { SpacersChoiceCreep } from './base-classes/creep';
 import { SpacersChoiceRoom } from './base-classes/room';
 import { SpacersChoiceSource } from './base-classes/source';
 import { SpacersChoiceSpawn } from './base-classes/spawn';
-import { Township } from './township/township';
+import { SpacersChoiceCreep } from './creep';
+import { Township } from './township';
 
 /**
  * The spacers board simply handles each of our townships by passing them their rooms and citizen data.

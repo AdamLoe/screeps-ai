@@ -1,4 +1,4 @@
-import { Township } from '../township/township';
+import { Township } from '../township';
 import { JobPriorityEnum } from './job-priority.enum';
 import { JobEnum } from './job.enum';
 
@@ -15,11 +15,6 @@ export function buildSpawnRequestsForTownship(
 ): ISpawnRequest[] {
   const spawnRequests: ISpawnRequest[] = [];
 
-  // TODO: Need to build cost analyzers for these
-  /**
-   * TODO: THOUGHHHHH, it might not actually be TOO worth it TBH
-   * TODO: This game is also about GCL8 Anyways TBH
-   */
   // Create a hauler and carrier for each source
   township.sources
     .forEach((source, index) => {
