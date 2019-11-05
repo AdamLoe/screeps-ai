@@ -5,20 +5,29 @@ import { BaseTask } from './_BaseTask';
 
 export class BuildTask extends BaseTask {
 
-  static buildRequests(township: Township): ITaskRequest[] {
+  task: ITaskRequest;
+  creep: SpacersChoiceCreep;
+  township: Township;
+
+  constructor(
+    task: ITaskRequest,
+    creep: SpacersChoiceCreep,
+    township: Township
+  ) {
+    super(task, creep, township);
+  }
+
+  static buildRequests(township: Township): Array<Partial<ITaskRequest>> {
 
     return [];
   }
 
-  cancelTask(taskRequest: ITaskRequest): boolean {
+  shouldCancelTask(): boolean {
+
     return false;
   }
 
-  runTask(
-    task: ITaskRequest,
-    creep: SpacersChoiceCreep,
-    township?: Township
-  ) {
+  runTask() {
 
   }
 }

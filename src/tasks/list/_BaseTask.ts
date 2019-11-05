@@ -4,19 +4,30 @@ import { ITaskRequest } from '../task-request.interface';
 
 export class BaseTask {
 
-  static buildRequests(township: Township): ITaskRequest[] {
+  task: ITaskRequest;
+  creep: SpacersChoiceCreep;
+  township: Township;
+
+  constructor(
+    task: ITaskRequest,
+    creep: SpacersChoiceCreep,
+    township: Township
+  ) {
+    this.task = task;
+    this.creep = creep;
+    this.township = township;
+  }
+
+  static buildRequests(township: Township): Array<Partial<ITaskRequest>> {
     return [];
   }
 
-  cancelTask(taskRequest: ITaskRequest): boolean {
+  shouldCancelTask(): boolean {
+
     return false;
   }
 
-  runTask(
-    task: ITaskRequest,
-    creep: SpacersChoiceCreep,
-    township?: Township
-  ) {
+  runTask() {
 
   }
 }

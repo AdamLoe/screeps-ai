@@ -1,92 +1,156 @@
+import { SpacersChoiceCreep } from '../creep';
 import { SpacersChoiceMemory } from '../memory';
 import { Township } from '../township';
+import { BuildTask } from './list/BuildTask';
 import { HarvestTask } from './list/HarvestTask';
 import { PickupTask } from './list/PickupTask';
 import { TransferTask } from './list/TransferTask';
 import { UpgradeTask } from './list/UpgradeTask';
 import { TaskController } from './task-controller';
 import { ITaskRequest } from './task-request.interface';
-import { BuildTask } from './list/BuildTask';
 import { TaskConfig } from './task.config';
 
-export function buildTaskRequestsForTownship(
-  township: Township
-): ITaskRequest[] {
+/**
+ * Build new task requests for a township, and assign them to its creeps
+ */
+export function buildAssignTasksForTownship(township: Township) {
+
+  // Get our current requests and build our new ones
+  const currentRequests = getCurrentRequests(township);
+  const validCurrentRequests = getValidRequests(currentRequests, township);
+  const newRequests = buildNewRequests(township);
+
+  // Combine these two list and update our memory
+  const updatedRequests = upsertNewTasks(validCurrentRequests, newRequests);
+
+  // Figure out which requests we can assign, and order them
+  let pendingRequests = orderAvailableTasks(updatedRequests);
+
+  // Try to assign each creep a task
+  township.creeps.forEach((creep) => {
+    const foundTask = findTaskForCreep(creep, pendingRequests);
+
+    // If we found a task they can take, assign it, and remove task fromm pending list
+    if (foundTask) {
+      assignTaskToCreep(creep, foundTask);
+      pendingRequests = pendingRequests.filter((task) => task.spacerId !== foundTask.spacerId);
+    }
+  });
+}
+
+/**
+ * Get all of the tasks that currently exist for this township
+ */
+function getCurrentRequests(township: Township): ITaskRequest[] {
 
   const allTasks = SpacersChoiceMemory.get().taskRequests;
-  const townshipTasks: ITaskRequest[] = Object.keys(allTasks)
+  return Object.keys(allTasks)
     .map((taskId) => allTasks[taskId])
     .filter((task) => task.townshipId === township.spacerId);
+}
 
-  // TODO: This should be a global cleanup that lives in another file
-  // First start by making sure our existing requests are valid
-  const taskRequests = townshipTasks.filter((task) => {
+/**
+ *
+ */
+function getValidRequests(tasks: ITaskRequest[], township: Township): ITaskRequest[] {
+
+  return tasks.filter((task) => {
     if (task.creepSpacerId) {
-      const badRef = township.creeps.some((creep) => {
+      const creepIsAlive = township.creeps.some((creep) => {
         return creep.spacerId === task.creepSpacerId;
       });
-      if (badRef) {
+      if (creepIsAlive) {
+        return true;
+      } else {
         TaskController.removeTask(task.spacerId);
         return false;
       }
-    }
-    return true;
-  });
 
-  const newTaskRequests: ITaskRequest[] = [
+    } else {
+      return true;
+    }
+  });
+}
+
+/**
+ * Build the list of tasks that we need done on this tick
+ */
+function buildNewRequests(township: Township): Array<Partial<ITaskRequest>> {
+  return [
     ...HarvestTask.buildRequests(township),
     ...PickupTask.buildRequests(township),
     ...TransferTask.buildRequests(township),
     ...UpgradeTask.buildRequests(township),
     ...BuildTask.buildRequests(township)
   ];
-
-  newTaskRequests.forEach((newTask) => {
-    const oldTask = townshipTasks.find((townshipTask) => {
-      return townshipTask.targetSpacerId === newTask.targetSpacerId;
-    });
-    // If we found a matching old task, update it with new info
-    if (oldTask) {
-      oldTask.posX = newTask.posX;
-      oldTask.posY = newTask.posY;
-      oldTask.priority = newTask.priority;
-
-    } else {
-      // Otherwise add a new task
-      TaskController.addTask(newTask);
-      taskRequests.push(newTask);
-    }
-  });
-
-  return newTaskRequests;
 }
 
-export function assignTaskRequestsForTownship(
-  township: Township,
-  taskRequests: ITaskRequest[]
-) {
+/**
+ * Update/Insert new tasks to our list, and return combined list
+ */
+function upsertNewTasks(
+  oldTasks: ITaskRequest[],
+  newTasks: Array<Partial<ITaskRequest>>
+): ITaskRequest[] {
 
-  // Get our tasks that haven't been assigned, in order of priority
-  const neededTasks = taskRequests
-    .filter((taskRequest) => !taskRequest.creepSpacerId)
-    .sort((t1, t2) => t2.priority - t1.priority);
+  const updatedList: ITaskRequest[] = oldTasks;
 
-  // For each creep, see if there is a task we can assign
-  township.creeps.forEach((creep) => {
-    const availCreepTasks = neededTasks.filter((task) => TaskConfig.canTakeTask(creep, task));
+  // Upsert our new tasks
+  newTasks.forEach((newTask) => {
+    const foundOldTask = oldTasks.find((oldTask) => {
+      return oldTask.targetSpacerId === newTask.targetSpacerId;
+    });
 
-    const hasAvailTask = availCreepTasks.length > 0;
-    const noAssignedTask = !creep.memory.taskRequests || creep.memory.taskRequests.length === 0;
-    if (hasAvailTask && noAssignedTask) {
+    // If we found a matching old taskType, update it with new info
+    if (foundOldTask) {
+      foundOldTask.posX = newTask.posX || foundOldTask.posX;
+      foundOldTask.posY = newTask.posY || foundOldTask.posY;
+      foundOldTask.priority = newTask.priority || foundOldTask.priority;
 
-      // Assign our task to our creep
-      const newCreepTask = availCreepTasks[0];
-      creep.memory.taskRequests = [newCreepTask];
-      creep.memory.taskMemory = {};
-      newCreepTask.creepSpacerId = creep.spacerId;
-
-      // Also remove it from list, so we don't assign it to next creep
-      neededTasks.filter((task) => task.spacerId !== newCreepTask.spacerId);
+    } else {
+      // Otherwise insert new task
+      const createdTask = TaskController.addTask(newTask);
+      updatedList.push(createdTask);
     }
   });
+
+  return updatedList;
+}
+
+/**
+ * Figure out which tasks aren't taken, and order them by priority
+ */
+function orderAvailableTasks(taskRequests: ITaskRequest[]) {
+  return taskRequests
+    .filter((taskRequest) => !taskRequest.creepSpacerId)
+    .sort((t1, t2) => t2.priority - t1.priority);
+}
+
+/**
+ * Find the best tasks for a creep, if it can take one
+ */
+function findTaskForCreep(creep: SpacersChoiceCreep, tasks: ITaskRequest[]) {
+
+  const availCreepTasks = tasks.filter((task) => TaskConfig.canTakeTask(creep, task));
+
+  const hasAvailTask = availCreepTasks.length > 0;
+  const noAssignedTask = !creep.memory.taskRequestIds || creep.memory.taskRequestIds.length === 0;
+
+  if (hasAvailTask && noAssignedTask) {
+    return availCreepTasks[0];
+
+  } else {
+    return null;
+  }
+}
+
+/**
+ * Assign a creep to task and vice versa
+ */
+function assignTaskToCreep(creep: SpacersChoiceCreep, task: ITaskRequest) {
+
+  // Assign our taskType to our creep
+  creep.memory.taskRequestIds = [task.spacerId];
+  creep.memory.taskMemory = {};
+  task.creepSpacerId = creep.spacerId;
 }

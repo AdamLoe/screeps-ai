@@ -15,6 +15,8 @@ export function buildSpawnRequestsForTownship(
 ): ISpawnRequest[] {
   const spawnRequests: ISpawnRequest[] = [];
 
+  const rcl = township.controller.level;
+
   // Create a hauler and carrier for each source
   township.sources
     .forEach((source, index) => {
@@ -29,7 +31,8 @@ export function buildSpawnRequestsForTownship(
       spawnRequests.push({
         townshipId: township.spacerId,
         job: JobEnum.CARRY,
-        bodyParts: [MOVE, MOVE, CARRY, CARRY],
+        bodyParts: index === 0 ?
+          [MOVE, MOVE, CARRY, CARRY] : [MOVE, MOVE, MOVE, CARRY, CARRY, CARRY],
         priority: index === 0 ?
             JobPriorityEnum.FIRST_HAULER :
             JobPriorityEnum.PRIMARY_ROOM_HAULER + index

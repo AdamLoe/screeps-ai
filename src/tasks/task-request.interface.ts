@@ -7,9 +7,10 @@ export interface ITaskRequest {
   targetSpacerId: string;
   townshipId: string;
   job: JobEnum;
-  task: TaskEnum;
+  taskType: TaskEnum;
   posX: number;
   posY: number;
+  moveOnPos?: boolean;
   priority: TaskPriorityEnum;
   creepSpacerId?: string;
 }

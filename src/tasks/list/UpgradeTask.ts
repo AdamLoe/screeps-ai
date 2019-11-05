@@ -1,7 +1,6 @@
 import { SpacersChoiceCreep } from '../../creep';
 import { JobEnum } from '../../spawning/job.enum';
 import { Township } from '../../township';
-import { getSpacerId } from '../../util/utils';
 import { TaskPriorityEnum } from '../task-priority.enum';
 import { ITaskRequest } from '../task-request.interface';
 import { TaskEnum } from '../task.enum';
@@ -9,33 +8,39 @@ import { BaseTask } from './_BaseTask';
 
 export class UpgradeTask extends BaseTask {
 
-  static buildRequests(township: Township): ITaskRequest[] {
+  task: ITaskRequest;
+  creep: SpacersChoiceCreep;
+  township: Township;
 
+  constructor(
+    task: ITaskRequest,
+    creep: SpacersChoiceCreep,
+    township: Township
+  ) {
+    super(task, creep, township);
+  }
+
+  static buildRequests(township: Township): Array<Partial<ITaskRequest>> {
     return [{
-      spacerId: getSpacerId(),
       targetSpacerId: township.controller.id,
       townshipId: township.spacerId,
       job: JobEnum.UPGRADE,
-      task: TaskEnum.UPGRADE,
+      taskType: TaskEnum.UPGRADE,
       posX: township.controller.pos.x,
       posY: township.controller.pos.y,
       priority: TaskPriorityEnum.UPGRADE_CONTROLLER
     }];
   }
 
-  cancelTask(taskRequest: ITaskRequest): boolean {
+  shouldCancelTask(): boolean {
     return false;
   }
 
-  runTask(
-    task: ITaskRequest,
-    creep: SpacersChoiceCreep,
-    township: Township
-  ) {
-    if (creep.carry.energy > 0) {
-      creep.upgradeController(township.controller);
+  runTask() {
+    if (this.creep.carry.energy > 0) {
+      this.creep.upgradeController(this.township.controller);
     } else {
-      creep.say('No Energy :(');
+      this.creep.say('No Energy :(');
     }
   }
 }

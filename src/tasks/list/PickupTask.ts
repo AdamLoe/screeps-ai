@@ -1,7 +1,7 @@
 import { SpacersChoiceCreep } from '../../creep';
 import { JobEnum } from '../../spawning/job.enum';
 import { Township } from '../../township';
-import { getSpacerId, isAdjacent } from '../../util/utils';
+import { getSpacerId } from '../../util/utils';
 import { getDroppedResourcePriority } from '../task-priority.enum';
 import { ITaskRequest } from '../task-request.interface';
 import { TaskEnum } from '../task.enum';
@@ -9,7 +9,19 @@ import { BaseTask } from './_BaseTask';
 
 export class PickupTask extends BaseTask {
 
-  static buildRequests(township: Township): ITaskRequest[] {
+  task: ITaskRequest;
+  creep: SpacersChoiceCreep;
+  township: Township;
+
+  constructor(
+    task: ITaskRequest,
+    creep: SpacersChoiceCreep,
+    township: Township
+  ) {
+    super(task, creep, township);
+  }
+
+  static buildRequests(township: Township): Array<Partial<ITaskRequest>> {
 
     const droppedResources: Resource[] = [];
     township.rooms.forEach((room) => {
@@ -24,11 +36,10 @@ export class PickupTask extends BaseTask {
         droppedResource.pos.y.toString();
 
       return {
-        spacerId: getSpacerId(),
         targetSpacerId: resourceId,
         townshipId: township.spacerId,
         job: JobEnum.CARRY,
-        task: TaskEnum.PICKUP,
+        taskType: TaskEnum.PICKUP,
         posX: droppedResource.pos.x,
         posY: droppedResource.pos.y,
         priority: getDroppedResourcePriority(droppedResource.resourceType)
@@ -36,24 +47,31 @@ export class PickupTask extends BaseTask {
     });
   }
 
-  cancelTask(taskRequest: ITaskRequest): boolean {
-    return false;
+  shouldCancelTask(): boolean {
+    const targetResource = this.getResource();
+    return !targetResource;
   }
 
-  runTask(task: ITaskRequest, creep: SpacersChoiceCreep) {
-    creep.say('PICKING UP');
-    const resources = creep.room.find(FIND_DROPPED_RESOURCES);
-    const adjacentResource = resources.find((resource) => {
-      return isAdjacent(resource.pos.x, resource.pos.y, creep.pos);
+  runTask() {
+    const targetResource = this.getResource();
+
+    if (targetResource) {
+      this.creep.pickup(targetResource);
+    } else {
+      console.log(`No resource found at that position! Cancelling task x:${this.task.posX}, y:${this.task.posY}`);
+    }
+    this.creep.endTask(this.task);
+  }
+
+  getResource(): Resource {
+
+    const townshipResources: Resource[] = [];
+    this.township.rooms.forEach((room) => {
+      townshipResources.push(...room.find(FIND_DROPPED_RESOURCES));
     });
 
-    if (adjacentResource) {
-      creep.pickup(adjacentResource);
-      creep.endTask(task);
-
-    } else {
-      console.log('Error finding adjacent resource, though our position says we should be next to one');
-      creep.memory.taskRequests = [];
-    }
+    return townshipResources.find((resource) => {
+      return resource.pos.x === this.task.posX && resource.pos.y === this.task.posY;
+    }) as Resource;
   }
 }

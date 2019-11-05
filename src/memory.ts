@@ -107,4 +107,12 @@ export class SpacersChoiceMemory {
     memory.sources[spacerId] = memory.sources[spacerId] || {};
     return memory.sources[spacerId];
   }
+
+  static updateTask(taskId: string, updatedTask: Partial<ITaskRequest>) {
+    const memory = SpacersChoiceMemory.get();
+    memory.taskRequests[taskId] = {
+      ...memory.taskRequests[taskId],
+      ...updatedTask
+    };
+  }
 }

@@ -1,31 +1,41 @@
 import { SpacersChoiceCreep } from '../creep';
+import { JobEnum } from '../spawning/job.enum';
 import { ITaskRequest } from './task-request.interface';
 import { TaskEnum } from './task.enum';
 
 export interface ITaskConfig {
   type: TaskEnum;
+  job: JobEnum;
   requiredFunc?: (c: SpacersChoiceCreep) => boolean;
 }
 
 export const taskConfigs: ITaskConfig[] = [{
-  type: TaskEnum.HARVEST
-}, {
-  type: TaskEnum.HEAL
+  type: TaskEnum.HARVEST,
+  job: JobEnum.HARVEST
 }, {
   type: TaskEnum.GIVE_TO,
+  job: JobEnum.CARRY,
   requiredFunc: (creep) => creep.carry.energy > 0
 }, {
   type: TaskEnum.DROP_OFF,
+  job: JobEnum.CARRY,
   requiredFunc: (creep) => creep.carry.energy > 0
 }, {
-  type: TaskEnum.BUILD
-}, {
   type: TaskEnum.PICKUP,
+  job: JobEnum.CARRY,
   requiredFunc: (creep) => creep.carry.energy === 0
 }, {
-  type: TaskEnum.REPAIR
+  type: TaskEnum.BUILD,
+  job: JobEnum.BUILD
 }, {
-  type: TaskEnum.UPGRADE
+  type: TaskEnum.REPAIR,
+  job: JobEnum.REPAIR
+}, {
+  type: TaskEnum.UPGRADE,
+  job: JobEnum.UPGRADE
+}, {
+  type: TaskEnum.HEAL,
+  job: JobEnum.HEAL
 }];
 
 export class TaskConfig {
@@ -41,16 +51,21 @@ export class TaskConfig {
     task: ITaskRequest
   ): boolean {
 
-    // First make sure this task is for our job
+    // First make sure this taskType is for our job
     const hasJob = creep.memory.job === task.job;
     if (hasJob) {
 
-      // If so, see if our task has any specific requirements creeps need to pass
-      const config = TaskConfig.getConfig(task.task);
-      if (config.requiredFunc) {
-        return config.requiredFunc(creep);
+      // If so, see if our taskType has any specific requirements creeps need to pass
+      const config = TaskConfig.getConfig(task.taskType);
+      if (config) {
+        if (config.requiredFunc) {
+          return config.requiredFunc(creep);
+        } else {
+          return true;
+        }
       } else {
-        return true;
+        console.log(`Could not find task type`, task.taskType);
+        return false;
       }
 
     } else {

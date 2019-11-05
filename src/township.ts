@@ -1,11 +1,11 @@
 import { SpacersChoiceRoom } from './base-classes/room';
 import { SpacersChoiceSource } from './base-classes/source';
 import { SpacersChoiceSpawn } from './base-classes/spawn';
+import { ConstructionManager } from './construction/construction-manager';
 import { ICreepMemory, SpacersChoiceCreep } from './creep';
 import { SpacersChoiceMemory } from './memory';
 import { buildSpawnRequestsForTownship, getSpawnCost, ISpawnRequest } from './spawning/spawn-requests';
-import { ITaskRequest } from './tasks/task-request.interface';
-import { assignTaskRequestsForTownship, buildTaskRequestsForTownship } from './tasks/task-requests';
+import { buildAssignTasksForTownship } from './tasks/task-requests';
 import { getSpacerId } from './util/utils';
 
 export interface ITownshipCachedRequests {
@@ -95,7 +95,7 @@ export class Township {
   }
 
   /**
-   * Are we cached task && spawn requests list out of date
+   * Are we cached taskType && spawn requests list out of date
    */
   areCachedRequestsOutOfDate() {
     if (this.memory.cachedRequests) {
@@ -114,14 +114,94 @@ export class Township {
   **********************************************
   */
 
+  findStructures(structureTypes?: StructureConstant[]): Structure[] {
+    const structures: Structure[] = [];
+
+    this.rooms.forEach((room) => {
+      structures.push(...room.find(FIND_STRUCTURES));
+    });
+
+    if (structureTypes) {
+      return structures.filter((struct) => {
+        return structureTypes.includes(struct.structureType);
+      });
+
+    } else {
+      return structures;
+    }
+  }
+
+  findConstructionSites(structureTypes?: StructureConstant[]) {
+    const sites: ConstructionSite[] = [];
+
+    this.rooms.forEach((room) => {
+      sites.push(...room.find(FIND_CONSTRUCTION_SITES));
+    });
+
+    if (structureTypes) {
+      return sites.filter((site) => {
+        return structureTypes.includes(site.structureType);
+      });
+
+    } else {
+      return sites;
+    }
+  }
+
+  terrainAtPos(x: number, y: number, roomName: string): boolean {
+    const foundRoom = this.rooms.find((room) => room.name === roomName);
+    if (foundRoom) {
+      const terrain = foundRoom.getTerrain();
+      return terrain.get(x, y) !== 0;
+
+    } else {
+      console.error('Could not find that room: terrainAtPos');
+      return false;
+    }
+  }
+
+  findAtPos(x: number, y: number, roomName: string): LookAtResult[] {
+    const foundRoom = this.rooms.find((room) => room.name === roomName);
+    if (foundRoom) {
+      return foundRoom.lookAt(x, y);
+
+    } else {
+      console.error('Could not find that room: FindAtPos');
+      return [];
+    }
+  }
+
   /**
    * Handle of all of the tasks/spawning our townships should be assigning on this tick
    */
   run() {
+    
+    const totalBefore = Game.cpu.getUsed();
+
+    let beforeCpu: number;
+    let afterCpu: number;
+
+    beforeCpu = Game.cpu.getUsed();
+    ConstructionManager.buildConstructionSites(this);
+    afterCpu = Game.cpu.getUsed();
+    // console.log('construction', afterCpu - beforeCpu);
+
+    beforeCpu = Game.cpu.getUsed();
     this.assignSpawnRequests();
-    const taskRequests = buildTaskRequestsForTownship(this);
-    assignTaskRequestsForTownship(this, taskRequests);
+    afterCpu = Game.cpu.getUsed();
+    // console.log('spawn', afterCpu - beforeCpu);
+
+    beforeCpu = Game.cpu.getUsed();
+    buildAssignTasksForTownship(this);
+    afterCpu = Game.cpu.getUsed();
+    // console.log('tasks', afterCpu - beforeCpu);
+
+    beforeCpu = Game.cpu.getUsed();
     this.runCreeps();
+    afterCpu = Game.cpu.getUsed();
+    // console.log('creeps', afterCpu - beforeCpu);
+    
+    // console.log('township', this.spacerId, ':', Game.cpu.getUsed() - totalBefore);
   }
 
   runCreeps() {
@@ -185,7 +265,7 @@ export class Township {
               memory: {
                 townshipId: spawnRequest.townshipId,
                 job: spawnRequest.job,
-                taskRequests: [],
+                taskRequestIds: [],
                 taskMemory: {}
               } as ICreepMemory
             }
